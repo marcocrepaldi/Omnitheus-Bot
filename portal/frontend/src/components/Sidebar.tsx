@@ -2,14 +2,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Bot, CalendarClock, ScrollText, Users, LogOut, Building2, KeyRound } from "lucide-react";
+import { LayoutDashboard, Bot, CalendarClock, ScrollText, Users, LogOut, Building2, KeyRound, ShieldCheck } from "lucide-react";
 import { getUser, logout, limparSessao } from "@/lib/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, role: "viewer", superAdmin: false },
   { href: "/robos", label: "Robôs", icon: Bot, role: "viewer", superAdmin: false },
-  { href: "/credenciais", label: "Credenciais", icon: KeyRound, role: "operator", superAdmin: false },
+  { href: "/credenciais", label: "Credenciais", icon: KeyRound,    role: "operator", superAdmin: false },
+  { href: "/cofre",       label: "Cofre",       icon: ShieldCheck, role: "operator", superAdmin: false },
   { href: "/agendamentos", label: "Agendamentos", icon: CalendarClock, role: "operator", superAdmin: false },
   { href: "/logs", label: "Logs", icon: ScrollText, role: "viewer", superAdmin: false },
   { href: "/usuarios", label: "Usuários", icon: Users, role: "admin", superAdmin: false },

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import engine
 from . import models
-from .routers import robos, execucoes, agendamentos, auth, usuarios, admin, credenciais
+from .routers import robos, execucoes, agendamentos, auth, usuarios, admin, credenciais, cofre
 from .scheduler import iniciar_scheduler, scheduler
 
 handler = logging.StreamHandler(sys.stdout)
@@ -62,6 +62,7 @@ app.include_router(robos.router)
 app.include_router(execucoes.router)
 app.include_router(agendamentos.router)
 app.include_router(credenciais.router)
+app.include_router(cofre.router)
 
 
 @app.get("/health")

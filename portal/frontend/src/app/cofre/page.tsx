@@ -1,0 +1,288 @@
+"use client";
+import { useEffect, useState } from "react";
+import Sidebar from "@/components/Sidebar";
+import ConfirmModal from "@/components/ConfirmModal";
+import { authHeader } from "@/lib/auth";
+import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+const API = process.env.NEXT_PUBLIC_API_URL;
+
+interface Cofre {
+  id: number;
+  seguradora_nome: string;
+  login: string | null;
+  url_portal: string | null;
+  observacao: string | null;
+  tem_senha_anterior: boolean;
+  atualizado_em: string | null;
+  criado_em: string;
+}
+
+const emptyForm = { seguradora_nome: "", login: "", senha: "", url_portal: "", observacao: "" };
+
+export default function CofrePage() {
+  const [itens, setItens]           = useState<Cofre[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [showForm, setShowForm]     = useState(false);
+  const [form, setForm]             = useState(emptyForm);
+  const [salvando, setSalvando]     = useState(false);
+  const [senhasVisiveis, setSenhasVisiveis] = useState<Record<number, string>>({});
+  const [loadingSenha, setLoadingSenha]     = useState<number | null>(null);
+  const [rotacionando, setRotacionando]     = useState<number | null>(null);
+  const [novaSenhaGerada, setNovaSenhaGerada] = useState<{ id: number; nome: string; senha: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; id: number; acao: "rollback" | "deletar"; nome: string }>({
+    open: false, id: 0, acao: "deletar", nome: "",
+  });
+
+  const h = () => authHeader();
+
+  const carregar = () => {
+    setLoading(true);
+    fetch(`${API}/cofre/`, { headers: h() })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setItens(Array.isArray(d) ? d : []))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { carregar(); }, []);
+
+  const salvar = async () => {
+    if (!form.seguradora_nome || !form.senha) return;
+    setSalvando(true);
+    await fetch(`${API}/cofre/`, {
+      method: "POST",
+      headers: { ...h(), "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setSalvando(false);
+    setShowForm(false);
+    setForm(emptyForm);
+    carregar();
+  };
+
+  const verSenha = async (id: number) => {
+    if (senhasVisiveis[id]) {
+      setSenhasVisiveis(s => { const n = { ...s }; delete n[id]; return n; });
+      return;
+    }
+    setLoadingSenha(id);
+    const r = await fetch(`${API}/cofre/${id}/senha`, { headers: h() });
+    if (r.ok) {
+      const d = await r.json();
+      setSenhasVisiveis(s => ({ ...s, [id]: d.senha }));
+    }
+    setLoadingSenha(null);
+  };
+
+  const rotacionar = async (item: Cofre) => {
+    setRotacionando(item.id);
+    const r = await fetch(`${API}/cofre/${item.id}/rotacionar`, { method: "POST", headers: h() });
+    if (r.ok) {
+      const d = await r.json();
+      setNovaSenhaGerada({ id: item.id, nome: item.seguradora_nome, senha: d.senha_nova });
+      carregar();
+    }
+    setRotacionando(null);
+  };
+
+  const confirmarAcao = async () => {
+    const { id, acao } = confirmModal;
+    setConfirmModal(c => ({ ...c, open: false }));
+    if (acao === "deletar") {
+      await fetch(`${API}/cofre/${id}`, { method: "DELETE", headers: h() });
+      carregar();
+    } else if (acao === "rollback") {
+      await fetch(`${API}/cofre/${id}/rollback`, { method: "POST", headers: h() });
+      carregar();
+    }
+  };
+
+  return (
+    <div className="flex">
+      <Sidebar />
+      <main className="flex-1 p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              <ShieldCheck size={24} className="text-red-500" /> Cofre de Senhas
+            </h2>
+            <p className="text-neutral-500 text-sm mt-1">Credenciais das seguradoras — armazenadas com criptografia AES</p>
+          </div>
+          <button onClick={() => { setShowForm(true); setForm(emptyForm); }}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Plus size={16} /> Nova Credencial
+          </button>
+        </div>
+
+        {/* Nova senha gerada */}
+        {novaSenhaGerada && (
+          <div className="mb-6 bg-emerald-900/30 border border-emerald-700 rounded-xl p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-emerald-300 font-semibold mb-1">✓ Nova senha gerada para {novaSenhaGerada.nome}</p>
+                <p className="text-xs text-emerald-400 mb-3">Copie a senha antes de fechar. Use no Robô 2 (SUHAI) e depois dispare o Robô 3 (Quiver).</p>
+                <code className="bg-neutral-900 text-emerald-300 px-4 py-2 rounded-lg text-sm font-mono border border-emerald-800 block w-fit">
+                  {novaSenhaGerada.senha}
+                </code>
+              </div>
+              <button onClick={() => setNovaSenhaGerada(null)} className="text-neutral-500 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Formulário */}
+        {showForm && (
+          <div className="mb-6 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-5">Nova Credencial</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-neutral-500 mb-1.5 block">Seguradora *</label>
+                <input value={form.seguradora_nome} onChange={e => setForm(f => ({ ...f, seguradora_nome: e.target.value.toUpperCase() }))}
+                  placeholder="SUHAI"
+                  className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500" />
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1.5 block">Login</label>
+                <input value={form.login} onChange={e => setForm(f => ({ ...f, login: e.target.value }))}
+                  placeholder="suhai3148"
+                  className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500" />
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1.5 block">Senha atual *</label>
+                <input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
+                  placeholder="••••••••"
+                  className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500" />
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1.5 block">URL do portal</label>
+                <input value={form.url_portal} onChange={e => setForm(f => ({ ...f, url_portal: e.target.value }))}
+                  placeholder="https://i4pro.suhaiseguradora.com.br/"
+                  className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-neutral-500 mb-1.5 block">Observação</label>
+                <input value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))}
+                  placeholder="Ex: conta principal da corretora"
+                  className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={salvar} disabled={salvando || !form.seguradora_nome || !form.senha}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
+                <Save size={15} /> {salvando ? "Salvando..." : "Salvar"}
+              </button>
+              <button onClick={() => setShowForm(false)}
+                className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 px-5 py-2.5 rounded-lg text-sm font-medium">
+                <X size={15} /> Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Lista */}
+        {loading ? <p className="text-neutral-500 text-sm">Carregando...</p> : (
+          <div className="space-y-3">
+            {itens.length === 0 && (
+              <div className="text-center py-16 text-neutral-500">
+                <ShieldCheck size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Nenhuma credencial no cofre ainda.</p>
+              </div>
+            )}
+            {itens.map(item => (
+              <div key={item.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-red-900/30 rounded-lg"><KeyRound size={20} className="text-red-400" /></div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white font-semibold">{item.seguradora_nome}</p>
+                        {item.tem_senha_anterior && (
+                          <span className="text-xs bg-yellow-900/50 text-yellow-300 border border-yellow-800 px-2 py-0.5 rounded-full">rotação pendente</span>
+                        )}
+                      </div>
+                      {item.login && <p className="text-neutral-400 text-xs mt-0.5">Login: {item.login}</p>}
+                      {item.url_portal && (
+                        <a href={item.url_portal} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-0.5">
+                          <ExternalLink size={10} /> {item.url_portal}
+                        </a>
+                      )}
+                      {item.observacao && <p className="text-neutral-500 text-xs mt-0.5 italic">{item.observacao}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Ver senha */}
+                    <button onClick={() => verSenha(item.id)}
+                      title={senhasVisiveis[item.id] ? "Ocultar senha" : "Ver senha"}
+                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-lg transition-colors">
+                      {loadingSenha === item.id ? <RefreshCw size={12} className="animate-spin" /> : senhasVisiveis[item.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                      {senhasVisiveis[item.id] ? "Ocultar" : "Ver senha"}
+                    </button>
+
+                    {/* Rotacionar */}
+                    <button onClick={() => rotacionar(item)}
+                      title="Gerar nova senha automaticamente"
+                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-emerald-300 bg-neutral-800 hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors">
+                      {rotacionando === item.id ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                      Rotacionar
+                    </button>
+
+                    {/* Rollback */}
+                    {item.tem_senha_anterior && (
+                      <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "rollback", nome: item.seguradora_nome })}
+                        title="Restaurar senha anterior"
+                        className="flex items-center gap-1.5 text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 hover:bg-yellow-900/40 px-3 py-1.5 rounded-lg transition-colors">
+                        <RotateCcw size={12} /> Rollback
+                      </button>
+                    )}
+
+                    {/* Deletar */}
+                    <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "deletar", nome: item.seguradora_nome })}
+                      className="text-neutral-500 hover:text-red-500 transition-colors p-1.5">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Senha visível */}
+                {senhasVisiveis[item.id] && (
+                  <div className="mt-3 flex items-center gap-3 bg-neutral-800 rounded-lg px-4 py-2.5 border border-neutral-700">
+                    <span className="text-xs text-neutral-500">Senha:</span>
+                    <code className="text-emerald-300 font-mono text-sm flex-1">{senhasVisiveis[item.id]}</code>
+                    <button onClick={() => navigator.clipboard.writeText(senhasVisiveis[item.id])}
+                      className="text-xs text-neutral-500 hover:text-white transition-colors">copiar</button>
+                  </div>
+                )}
+
+                {/* Última atualização */}
+                <p className="text-xs text-neutral-600 mt-2 text-right">
+                  Atualizado: {item.atualizado_em
+                    ? format(new Date(item.atualizado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                    : format(new Date(item.criado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      <ConfirmModal
+        open={confirmModal.open}
+        titulo={confirmModal.acao === "deletar" ? "Excluir credencial" : "Restaurar senha anterior"}
+        descricao={confirmModal.acao === "deletar"
+          ? `Excluir permanentemente a credencial de ${confirmModal.nome}?`
+          : `Restaurar a senha anterior de ${confirmModal.nome}? A senha atual será perdida.`}
+        confirmLabel={confirmModal.acao === "deletar" ? "Excluir" : "Restaurar"}
+        variante="danger"
+        onConfirm={confirmarAcao}
+        onCancel={() => setConfirmModal(c => ({ ...c, open: false }))}
+      />
+    </div>
+  );
+}

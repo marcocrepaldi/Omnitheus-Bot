@@ -95,6 +95,23 @@ class CredencialTenant(Base):
     atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+class CofreSenha(Base):
+    """Cofre de senhas por tenant — armazena credenciais de seguradoras criptografadas."""
+    __tablename__ = "cofre_senhas"
+    __table_args__ = (UniqueConstraint("tenant_id", "seguradora_nome", name="uq_cofre_tenant_seg"),)
+
+    id               = Column(Integer, primary_key=True, index=True)
+    tenant_id        = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    seguradora_nome  = Column(String(100), nullable=False)   # ex: SUHAI, BRADESCO
+    login            = Column(String(200), nullable=True)    # usuário no portal da seguradora
+    senha_enc        = Column(Text, nullable=False)          # senha criptografada (Fernet)
+    senha_anterior_enc = Column(Text, nullable=True)         # senha anterior (rollback)
+    url_portal       = Column(String(300), nullable=True)    # URL do portal da seguradora
+    observacao       = Column(Text, nullable=True)
+    atualizado_em    = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    criado_em        = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Execucao(Base):
     __tablename__ = "execucoes"
 
