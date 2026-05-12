@@ -1,0 +1,23 @@
+# Credenciais — NUNCA subir
+.env
+**/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+*.local
+
+# Debug / temporários
+debug_*.png
+debug_*.html
+*.log
+
+# Docker
+*.override.yml

@@ -1,0 +1,48 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://robo_harper_user:RoboHarper2026@host.docker.internal:5432/robo_harper
+      - HARPER_USER=${HARPER_USER}
+      - HARPER_PASS=${HARPER_PASS}
+      - TWOCAPTCHA_KEY=${TWOCAPTCHA_KEY}
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_TO=${EMAIL_TO}
+    networks:
+      - easypanel
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=easypanel"
+      - "traefik.http.routers.robos-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.robos-api.entrypoints=websecure"
+      - "traefik.http.routers.robos-api.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.robos-strip.stripprefix.prefixes=/api"
+      - "traefik.http.routers.robos-api.middlewares=robos-strip"
+      - "traefik.http.services.robos-api.loadbalancer.server.port=8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
+    restart: unless-stopped
+    networks:
+      - easypanel
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=easypanel"
+      - "traefik.http.routers.robos-www.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.robos-www.entrypoints=websecure"
+      - "traefik.http.routers.robos-www.tls.certresolver=letsencrypt"
+      - "traefik.http.services.robos-www.loadbalancer.server.port=3000"
+
+networks:
+  easypanel:
+    external: true
