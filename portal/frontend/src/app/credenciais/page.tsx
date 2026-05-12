@@ -20,6 +20,11 @@ const CAMPOS_POR_ROBO: Record<number, Campo[]> = {
     { chave: "HARPER_PASS", label: "Senha Quiver",                tipo: "password" },
     { chave: "EMAIL_TO",    label: "E-mail para receber alertas", tipo: "text",     placeholder: "ti@suacorretora.com.br" },
   ],
+  2: [
+    { chave: "SUHAI_USER",     label: "Usuário SUHAI",   tipo: "text",     placeholder: "suhai3148" },
+    { chave: "SUHAI_PASS",     label: "Senha atual SUHAI",  tipo: "password" },
+    { chave: "SUHAI_NEW_PASS", label: "Nova senha SUHAI",   tipo: "password" },
+  ],
 };
 
 export default function CredenciaisPage() {
