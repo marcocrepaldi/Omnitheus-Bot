@@ -27,17 +27,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-50 dark:bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <Bot size={32} className="text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-2xl mb-4">
+            <Bot size={32} className="text-neutral-900 dark:text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Portal Robôs</h1>
-          <p className="text-gray-400 text-sm mt-1">Faça login para continuar</p>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Portal Robôs</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Faça login para continuar</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 rounded-2xl p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 space-y-5">
           {erro && (
             <div className="bg-red-950 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
               {erro}
@@ -45,32 +45,32 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">E-mail</label>
+            <label className="block text-sm text-neutral-500 dark:text-neutral-400 mb-1.5">E-mail</label>
             <input
               type="email" required value={email} onChange={e => setEmail(e.target.value)}
               placeholder="seu@email.com"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-2.5 text-neutral-900 dark:text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-red-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Senha</label>
+            <label className="block text-sm text-neutral-500 dark:text-neutral-400 mb-1.5">Senha</label>
             <input
               type="password" required value={senha} onChange={e => setSenha(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-2.5 text-neutral-900 dark:text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-red-500 transition-colors"
             />
           </div>
 
           <button
             type="submit" disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-neutral-900 dark:text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 text-xs mt-6">
+        <p className="text-center text-neutral-600 text-xs mt-6">
           Harper Seguros © 2026 · Portal de Automações
         </p>
       </div>

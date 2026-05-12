@@ -36,7 +36,15 @@ def listar(
     q = db.query(Execucao).filter(Execucao.tenant_id == u.tenant_id).order_by(Execucao.iniciado_em.desc())
     if robo_id:
         q = q.filter(Execucao.robo_id == robo_id)
-    return q.limit(limit).all()
+    execucoes = q.limit(limit).all()
+    # Enriquece com nome do robô
+    robo_map = {r.id: r.nome for r in db.query(Robo).all()}
+    result = []
+    for e in execucoes:
+        d = ExecucaoOut.model_validate(e)
+        d.robo_nome = robo_map.get(e.robo_id)
+        result.append(d)
+    return result
 
 
 @router.post("/", response_model=ExecucaoOut, status_code=201)
@@ -58,7 +66,11 @@ def registrar(dados: ExecucaoCreate, db: Session = Depends(get_db), u: Usuario =
 
 @router.post("/robos/{robo_id}/executar", status_code=202)
 async def disparar(robo_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), u: Usuario = Depends(requer_role("operator"))):
-    robo = db.query(Robo).filter(Robo.id == robo_id, Robo.tenant_id == u.tenant_id).first()
+    # Permite disparar robôs da plataforma (tenant 1) ou do próprio tenant
+    robo = db.query(Robo).filter(
+        Robo.id == robo_id,
+        (Robo.tenant_id == 1) | (Robo.tenant_id == u.tenant_id)
+    ).first()
     if not robo:
         raise HTTPException(status_code=404, detail="Robô não encontrado")
     from ..scheduler import executar_robo

@@ -2,12 +2,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Bot, CalendarClock, ScrollText, Users, LogOut, Building2 } from "lucide-react";
+import { LayoutDashboard, Bot, CalendarClock, ScrollText, Users, LogOut, Building2, KeyRound } from "lucide-react";
 import { getUser, logout, limparSessao } from "@/lib/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, role: "viewer", superAdmin: false },
   { href: "/robos", label: "Robôs", icon: Bot, role: "viewer", superAdmin: false },
+  { href: "/credenciais", label: "Credenciais", icon: KeyRound, role: "operator", superAdmin: false },
   { href: "/agendamentos", label: "Agendamentos", icon: CalendarClock, role: "operator", superAdmin: false },
   { href: "/logs", label: "Logs", icon: ScrollText, role: "viewer", superAdmin: false },
   { href: "/usuarios", label: "Usuários", icon: Users, role: "admin", superAdmin: false },
@@ -36,10 +38,13 @@ export default function Sidebar() {
     HIERARQUIA[user?.role ?? "viewer"] >= HIERARQUIA[roleMin];
 
   return (
-    <aside className="w-60 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col">
-      <div className="p-6 border-b border-gray-800">
-        <p className="text-xs text-gray-500 uppercase tracking-widest">Harper Seguros</p>
-        <h1 className="text-lg font-bold text-white mt-1">Portal Robôs</h1>
+    <aside className="w-60 min-h-screen bg-white dark:bg-black border-r border-neutral-200 dark:border-neutral-800 flex flex-col">
+      <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-start">
+        <div>
+          <p className="text-xs text-neutral-500 uppercase tracking-widest">Harper Seguros</p>
+          <h1 className="text-lg font-bold text-neutral-900 dark:text-white mt-1">Portal Robôs</h1>
+        </div>
+        <ThemeToggle />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -48,7 +53,7 @@ export default function Sidebar() {
           return (
             <Link key={href} href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active ? "bg-blue-600 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                active ? "bg-red-600 text-white" : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 hover:text-neutral-900 dark:hover:text-white"
               }`}>
               <Icon size={18} />{label}
             </Link>
@@ -56,15 +61,15 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-neutral-200 dark:border-neutral-800">
         {user && (
           <div className="mb-3 px-2">
-            <p className="text-white text-sm font-medium truncate">{user.nome}</p>
-            <span className="text-xs text-gray-500 capitalize">{user.role}</span>
+            <p className="text-neutral-900 dark:text-white text-sm font-medium truncate">{user.nome}</p>
+            <span className="text-xs text-neutral-500 capitalize">{user.role}</span>
           </div>
         )}
         <button onClick={handleLogout}
-          className="flex items-center gap-2 text-gray-400 hover:text-red-400 text-sm transition-colors px-2 py-1.5 w-full rounded-lg hover:bg-gray-800">
+          className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-500 text-sm transition-colors px-2 py-1.5 w-full rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900">
           <LogOut size={16} /> Sair
         </button>
       </div>

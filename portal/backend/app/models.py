@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -80,6 +80,19 @@ class Agendamento(Base):
     criado_em   = Column(DateTime(timezone=True), server_default=func.now())
 
     robo        = relationship("Robo", back_populates="agendamentos")
+
+
+class CredencialTenant(Base):
+    """Credenciais por tenant por robô — substituem as variáveis de ambiente."""
+    __tablename__ = "credenciais_tenant"
+    __table_args__ = (UniqueConstraint("tenant_id", "robo_id", name="uq_cred_tenant_robo"),)
+
+    id          = Column(Integer, primary_key=True, index=True)
+    tenant_id   = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    robo_id     = Column(Integer, ForeignKey("robos.id"), nullable=False, index=True)
+    dados       = Column(JSON, nullable=False, default=dict)  # {chave: valor}
+    criado_em   = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Execucao(Base):

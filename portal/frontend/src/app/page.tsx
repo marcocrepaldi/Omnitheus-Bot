@@ -18,13 +18,13 @@ interface Stats {
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: any; color: string }) {
   return (
-    <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex items-center gap-4">
+    <div className="bg-white dark:bg-neutral-900 rounded-xl p-5 border border-neutral-200 dark:border-neutral-800 flex items-center gap-4">
       <div className={`p-3 rounded-lg ${color}`}>
-        <Icon size={22} className="text-white" />
+        <Icon size={22} className="text-neutral-900 dark:text-white" />
       </div>
       <div>
-        <p className="text-2xl font-bold text-white">{value}</p>
-        <p className="text-sm text-gray-400">{label}</p>
+        <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
     </div>
   );
@@ -47,22 +47,22 @@ export default function Dashboard() {
     <div className="flex">
       <Sidebar />
       <main className="flex-1 p-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Dashboard</h2>
-        <p className="text-gray-400 mb-8 text-sm">
+        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Dashboard</h2>
+        <p className="text-neutral-500 dark:text-neutral-400 mb-8 text-sm">
           {stats?.ultima_execucao
             ? `Última execução: ${format(new Date(stats.ultima_execucao), "dd/MM/yyyy HH:mm", { locale: ptBR })}`
             : "Nenhuma execução registrada"}
         </p>
 
         {loading ? (
-          <p className="text-gray-500">Carregando...</p>
+          <p className="text-neutral-500">Carregando...</p>
         ) : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <StatCard label="Total de Robôs" value={stats?.total_robos ?? 0} icon={Bot} color="bg-blue-600" />
-              <StatCard label="Robôs Ativos" value={stats?.robos_ativos ?? 0} icon={CheckCircle} color="bg-emerald-600" />
-              <StatCard label="Execuções" value={stats?.total_execucoes ?? 0} icon={Activity} color="bg-purple-600" />
-              <StatCard label="Com Falha" value={stats?.execucoes_com_falha ?? 0} icon={XCircle} color="bg-red-600" />
+              <StatCard label="Total de Robôs" value={stats?.total_robos ?? 0} icon={Bot} color="bg-red-600" />
+              <StatCard label="Robôs Ativos" value={stats?.robos_ativos ?? 0} icon={CheckCircle} color="bg-red-500" />
+              <StatCard label="Execuções" value={stats?.total_execucoes ?? 0} icon={Activity} color="bg-red-700" />
+              <StatCard label="Com Falha" value={stats?.execucoes_com_falha ?? 0} icon={XCircle} color="bg-red-900" />
             </div>
 
             {stats && (stats.credenciais_com_erro ?? []).length > 0 && (

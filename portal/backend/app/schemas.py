@@ -45,6 +45,7 @@ class ExecucaoCreate(BaseModel):
 class ExecucaoOut(ExecucaoCreate):
     id: int
     iniciado_em: datetime
+    robo_nome: Optional[str] = None
     class Config:
         from_attributes = True
 

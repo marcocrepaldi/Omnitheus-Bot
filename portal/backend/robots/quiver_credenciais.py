@@ -11,16 +11,10 @@ from email.mime.multipart import MIMEMultipart
 from playwright.async_api import async_playwright
 from twocaptcha import TwoCaptcha
 
-HARPER_URL    = "https://harper.corretor-online.com.br/"
-HARPER_USER   = os.getenv("HARPER_USER")
-HARPER_PASS   = os.getenv("HARPER_PASS")
-CAPTCHA_KEY   = os.getenv("TWOCAPTCHA_KEY")
-EMAIL_HOST    = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT    = int(os.getenv("EMAIL_PORT", 587))
-EMAIL_USER    = os.getenv("EMAIL_USER")
-EMAIL_PASS    = os.getenv("EMAIL_PASS")
-EMAIL_TO      = os.getenv("EMAIL_TO")
 RECAPTCHA_KEY = "6LfkNhQdAAAAANq5pot8umKZPzZAoNT5Cpf4KWAI"
+
+# Credenciais lidas sempre em runtime (dentro das funções) para capturar
+# os valores injetados pelo scheduler por tenant. Não use variáveis de módulo.
 
 logger = logging.getLogger("robot.quiver")
 if not logger.handlers:
@@ -31,32 +25,46 @@ if not logger.handlers:
 
 
 def send_email(subject: str, body: str):
-    if not all([EMAIL_HOST, EMAIL_USER, EMAIL_PASS, EMAIL_TO]):
-        logger.info(f"[E-MAIL DESATIVADO] {subject}")
+    # Lê sempre em runtime para capturar credenciais injetadas pelo scheduler
+    email_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    email_port = int(os.getenv("EMAIL_PORT", 587))
+    email_user = os.getenv("EMAIL_USER")
+    email_pass = os.getenv("EMAIL_PASS")
+    email_to   = os.getenv("EMAIL_TO")
+
+    if not all([email_host, email_user, email_pass, email_to]):
+        logger.info(f"[E-MAIL DESATIVADO] {subject} | EMAIL_TO={email_to} EMAIL_USER={email_user}")
         return
+
+    logger.info(f"Enviando e-mail para {email_to} | assunto: {subject}")
     msg = MIMEMultipart()
-    msg["From"]    = EMAIL_USER
-    msg["To"]      = EMAIL_TO
+    msg["From"]    = email_user
+    msg["To"]      = email_to
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain", "utf-8"))
-    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+    with smtplib.SMTP(email_host, email_port) as server:
         server.ehlo()
         server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
+        server.login(email_user, email_pass)
         server.send_message(msg)
+    logger.info(f"E-mail enviado com sucesso para {email_to}")
 
 
-def _solve_captcha_sync() -> str:
-    solver = TwoCaptcha(CAPTCHA_KEY)
-    result = solver.recaptcha(sitekey=RECAPTCHA_KEY, url=HARPER_URL)
+def _solve_captcha_sync(captcha_key: str, url: str, sitekey: str) -> str:
+    solver = TwoCaptcha(captcha_key)
+    result = solver.recaptcha(sitekey=sitekey, url=url)
     return result["code"]
 
 
-async def solve_recaptcha(page) -> str:
+async def solve_recaptcha(page, captcha_key: str, url: str, sitekey: str) -> str:
+    if not captcha_key:
+        raise ValueError("TWOCAPTCHA_KEY não configurado. Salve as credenciais em /credenciais.")
     logger.info("Enviando reCAPTCHA para 2captcha (aguarde ~30s)...")
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
-        token = await loop.run_in_executor(pool, _solve_captcha_sync)
+        token = await loop.run_in_executor(pool, _solve_captcha_sync, captcha_key, url, sitekey)
+    if token.startswith("ERROR_"):
+        raise ValueError(f"Erro 2captcha: {token}. Verifique a chave em /credenciais.")
     await page.evaluate(
         f"document.getElementById('g-recaptcha-response').value = '{token}'"
     )
@@ -73,59 +81,163 @@ async def executar() -> dict:
         "mensagem": "..."
     }
     """
-    logger.info("Iniciando robô Quiver...")
+    # Relê as credenciais do ambiente a cada execução (injetadas pelo scheduler)
+    harper_url  = os.getenv("HARPER_URL", "https://harper.corretor-online.com.br/")
+    harper_user = os.getenv("HARPER_USER")
+    harper_pass = os.getenv("HARPER_PASS")
+    captcha_key = os.getenv("TWOCAPTCHA_KEY")
+    recaptcha_key = "6LfkNhQdAAAAANq5pot8umKZPzZAoNT5Cpf4KWAI"
+
+    logger.info(f"Iniciando robô Quiver | URL: {harper_url} | usuário: {harper_user}")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page    = await browser.new_page()
 
         try:
-            await page.goto(HARPER_URL, wait_until="networkidle")
+            import urllib.parse
+            parsed        = urllib.parse.urlparse(harper_url)
+            host          = parsed.hostname or ""
+            corretor_slug = host.split(".")[0].upper()
+            # Sempre faz login na URL raiz do sistema (ex: https://harper.corretor-online.com.br/)
+            login_url = f"{parsed.scheme}://{parsed.netloc}/"
+            logger.info(f"URL de login: {login_url} | slug: {corretor_slug}")
 
-            token = await solve_recaptcha(page)
+            await page.goto(login_url, wait_until="networkidle")
+
+            token = await solve_recaptcha(page, captcha_key, login_url, recaptcha_key)
 
             logger.info("Efetuando login...")
-            await page.evaluate(
+
+            # Verifica quais frames têm o botão de login
+            login_frame = None
+            for frame in page.frames:
+                try:
+                    has_btn = await frame.evaluate(
+                        "!!document.getElementById('btnEntrar')"
+                    )
+                    logger.info(f"Frame {frame.url} tem btnEntrar: {has_btn}")
+                    if has_btn:
+                        login_frame = frame
+                        break
+                except Exception as fe:
+                    logger.debug(f"Frame {frame.url} inacessível: {fe}")
+
+            if login_frame is None:
+                login_frame = page.main_frame
+
+            logger.info(f"Usando frame para login: {login_frame.url}")
+
+            await login_frame.evaluate(
                 f"""
-                document.getElementById('g-recaptcha-response').value = '{token}';
-                document.getElementById('Corretor').value  = 'HARPER';
-                document.getElementById('Corretor2').value = 'HARPER';
-                document.getElementById('Usuario').value   = '{HARPER_USER}';
-                document.getElementById('Senha').value     = '{HARPER_PASS}';
+                var cr = document.getElementById('g-recaptcha-response');
+                if (cr) cr.value = '{token}';
+                var c1 = document.getElementById('Corretor');
+                if (c1) c1.value = '{corretor_slug}';
+                var c2 = document.getElementById('Corretor2');
+                if (c2) c2.value = '{corretor_slug}';
+                var us = document.getElementById('Usuario');
+                if (us) us.value = '{harper_user}';
+                var pw = document.getElementById('Senha');
+                if (pw) pw.value = '{harper_pass}';
                 document.getElementById('btnEntrar').click();
                 """
             )
+
+            # Aguarda navegação ou mudança de conteúdo (SPAs não mudam URL)
             try:
-                await page.wait_for_url(
-                    lambda url: "harper.corretor-online.com.br" in url and url != HARPER_URL,
-                    timeout=60000
-                )
+                await page.wait_for_url(lambda url: url != login_url, timeout=30000)
             except Exception:
                 pass
             await page.wait_for_load_state("networkidle", timeout=60000)
             await page.wait_for_timeout(5000)
             logger.info(f"Pós-login: {page.url}")
 
-            # Área Seguradora
-            await page.locator("#navSide > div:nth-child(7) > a").click()
-            await page.wait_for_load_state("networkidle")
+            # Aguarda qualquer frame carregar conteúdo do quiver (até 20s)
+            for _ in range(20):
+                await page.wait_for_timeout(1000)
+                urls = [f.url for f in page.frames]
+                if any("quiver" in u and "iframe-login" not in u and "recaptcha" not in u for u in urls):
+                    break
+            logger.info(f"Frames disponíveis: {[f.url for f in page.frames]}")
+
+            # ── Área Seguradora — chama o onclick diretamente (elemento pode estar oculto) ──
+            async def clicar_seguradora() -> bool:
+                for frame in page.frames:
+                    # 1) Tenta via JavaScript direto no onclick (mais confiável em headless)
+                    try:
+                        invocou = await frame.evaluate("""
+                            (() => {
+                                var links = document.querySelectorAll('#navSide a');
+                                for (var i = 0; i < links.length; i++) {
+                                    var txt = links[i].innerText || links[i].textContent || '';
+                                    var onclick = links[i].getAttribute('onclick') || '';
+                                    if (txt.toLowerCase().includes('seguradora') ||
+                                        onclick.toLowerCase().includes('seguradora')) {
+                                        links[i].click();
+                                        return true;
+                                    }
+                                }
+                                // Fallback: chama SelecionaModuloJQuery diretamente
+                                if (typeof SelecionaModuloJQuery === 'function') {
+                                    SelecionaModuloJQuery(
+                                        'Fast/FrmAjaxBootstrap.aspx?pagina=AreaSeguradorasArquivos',
+                                        'AREA_SEGURADORAS','Professional',
+                                        'AREA_SEGURADORAS','Área de seguradoras'
+                                    );
+                                    return true;
+                                }
+                                return false;
+                            })()
+                        """)
+                        if invocou:
+                            logger.info(f"Clicou Área Seguradora via JS (frame {frame.url})")
+                            return True
+                    except Exception as fe:
+                        logger.debug(f"JS click falhou em {frame.url}: {fe}")
+
+                    # 2) Fallback: force click ignorando visibilidade
+                    for n in range(4, 12):
+                        el = await frame.query_selector(f"#navSide > div:nth-child({n}) > a")
+                        if el:
+                            try:
+                                text = (await el.inner_text()).strip().lower()
+                                if "seguradora" in text:
+                                    await el.click(force=True)
+                                    logger.info(f"Force-clicou Área Seguradora child {n}")
+                                    return True
+                            except Exception:
+                                pass
+                return False
+
+            clicou = await clicar_seguradora()
+            if not clicou:
+                raise RuntimeError("Não foi possível navegar para Área Seguradora.")
+
+            await page.wait_for_load_state("networkidle", timeout=30000)
             await page.wait_for_timeout(3000)
 
-            # Menu Ações — busca em todos os frames
+            # ── Menu Ações — force click ou JS ──────────────────────────────
             for frame in page.frames:
                 el = await frame.query_selector('[id="acoes-pagina"]')
                 if el:
-                    await el.click()
+                    try:
+                        await el.click()
+                    except Exception:
+                        await el.click(force=True)
                     logger.info(f"Clicou em #acoes-pagina: {frame.url}")
                     break
             await page.wait_for_timeout(2000)
 
-            # Central de Senhas — busca em todos os frames
+            # ── Central de Senhas — force click ou JS ────────────────────────
             for frame in page.frames:
                 el = await frame.query_selector('[id="btConfiguracoes"] a button') \
                      or await frame.query_selector('[id="btConfiguracoes"]')
                 if el:
-                    await el.click()
+                    try:
+                        await el.click()
+                    except Exception:
+                        await el.click(force=True)
                     logger.info("Clicou em Central de Senhas.")
                     break
             await page.wait_for_timeout(8000)

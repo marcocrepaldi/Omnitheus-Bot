@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
+import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, Pencil, Trash2, Bot, Play } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -9,6 +10,7 @@ interface Robo { id: number; nome: string; descricao: string; ativo: boolean; cr
 
 export default function RobosPage() {
   const [robos, setRobos] = useState<Robo[]>([]);
+  const [modal, setModal] = useState<{ open: boolean; roboId: number | null; roboNome: string }>({ open: false, roboId: null, roboNome: "" });
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<Robo | null>(null);
   const [form, setForm] = useState({ nome: "", descricao: "", ativo: true });
@@ -44,10 +46,15 @@ export default function RobosPage() {
   const editar = (r: Robo) => { setEditando(r); setForm({ nome: r.nome, descricao: r.descricao, ativo: r.ativo }); setShowForm(true); };
 
   const executar = async (id: number) => {
-    if (!confirm("Disparar o robô agora?")) return;
+    const robo = robos.find(r => r.id === id);
+    setModal({ open: true, roboId: id, roboNome: robo?.nome ?? "" });
+  };
+
+  const confirmarExecucao = async () => {
+    if (!modal.roboId) return;
     const h = await headers();
-    await fetch(`${API}/execucoes/robos/${id}/executar`, { method: "POST", headers: h });
-    alert("Robô disparado! Acompanhe em Logs.");
+    setModal(m => ({ ...m, open: false }));
+    await fetch(`${API}/execucoes/robos/${modal.roboId}/executar`, { method: "POST", headers: h });
   };
 
   return (
@@ -55,57 +62,67 @@ export default function RobosPage() {
       <Sidebar />
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-white">Robôs</h2>
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Robôs</h2>
           <button onClick={() => { setShowForm(true); setEditando(null); setForm({ nome: "", descricao: "", ativo: true }); }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-neutral-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Plus size={16} /> Novo Robô
           </button>
         </div>
 
         {showForm && (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold text-white mb-4">{editando ? "Editar Robô" : "Novo Robô"}</h3>
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{editando ? "Editar Robô" : "Novo Robô"}</h3>
             <div className="space-y-4">
               <input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
-                placeholder="Nome do robô" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 text-sm" />
+                placeholder="Nome do robô" className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-2 text-neutral-900 dark:text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-red-500" />
               <textarea value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
-                placeholder="Descrição" rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 text-sm" />
-              <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
-                <input type="checkbox" checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} className="rounded" />
+                placeholder="Descrição" rows={2} className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-2 text-neutral-900 dark:text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-red-500" />
+              <label className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 cursor-pointer">
+                <input type="checkbox" checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} className="rounded text-red-600 focus:ring-red-500 bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700" />
                 Ativo
               </label>
               <div className="flex gap-3">
-                <button onClick={salvar} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Salvar</button>
-                <button onClick={() => setShowForm(false)} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Cancelar</button>
+                <button onClick={salvar} className="bg-red-600 hover:bg-red-700 text-neutral-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium">Salvar</button>
+                <button onClick={() => setShowForm(false)} className="bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-600 text-neutral-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium">Cancelar</button>
               </div>
             </div>
           </div>
         )}
 
         <div className="space-y-3">
-          {robos.length === 0 && <p className="text-gray-500 text-sm">Nenhum robô cadastrado.</p>}
+          {robos.length === 0 && <p className="text-neutral-500 text-sm">Nenhum robô cadastrado.</p>}
           {robos.map(r => (
-            <div key={r.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center justify-between">
+            <div key={r.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="p-2 bg-blue-900 rounded-lg"><Bot size={20} className="text-blue-400" /></div>
+                <div className="p-2 bg-red-900/40 rounded-lg"><Bot size={20} className="text-red-500" /></div>
                 <div>
-                  <p className="text-white font-medium">{r.nome}</p>
-                  <p className="text-gray-400 text-sm">{r.descricao || "Sem descrição"}</p>
+                  <p className="text-neutral-900 dark:text-white font-medium">{r.nome}</p>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-sm">{r.descricao || "Sem descrição"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className={`text-xs px-2 py-1 rounded-full ${r.ativo ? "bg-emerald-900 text-emerald-300" : "bg-gray-800 text-gray-400"}`}>
+                <span className={`text-xs px-2 py-1 rounded-full ${r.ativo ? "bg-red-900/50 text-red-300" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"}`}>
                   {r.ativo ? "Ativo" : "Inativo"}
                 </span>
                 <button onClick={() => executar(r.id)} title="Executar agora"
-                  className="text-gray-400 hover:text-emerald-400 transition-colors"><Play size={16} /></button>
-                <button onClick={() => editar(r)} className="text-gray-400 hover:text-white transition-colors"><Pencil size={16} /></button>
-                <button onClick={() => deletar(r.id)} className="text-gray-400 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                  className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:text-white transition-colors"><Play size={16} /></button>
+                <button onClick={() => editar(r)} className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:text-white transition-colors"><Pencil size={16} /></button>
+                <button onClick={() => deletar(r.id)} className="text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
               </div>
             </div>
           ))}
         </div>
       </main>
+
+      <ConfirmModal
+        open={modal.open}
+        titulo="Disparar robô"
+        descricao={`Confirma a execução de "${modal.roboNome}" agora? O resultado aparecerá em Logs em instantes.`}
+        confirmLabel="Disparar"
+        cancelLabel="Cancelar"
+        onConfirm={confirmarExecucao}
+        onCancel={() => setModal(m => ({ ...m, open: false }))}
+      />
     </div>
   );
 }
