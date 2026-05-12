@@ -21,9 +21,17 @@ const CAMPOS_POR_ROBO: Record<number, Campo[]> = {
     { chave: "EMAIL_TO",    label: "E-mail para receber alertas", tipo: "text",     placeholder: "ti@suacorretora.com.br" },
   ],
   2: [
-    { chave: "SUHAI_USER",     label: "Usuário SUHAI",   tipo: "text",     placeholder: "suhai3148" },
+    { chave: "SUHAI_USER",     label: "Usuário SUHAI",      tipo: "text",     placeholder: "suhai3148" },
     { chave: "SUHAI_PASS",     label: "Senha atual SUHAI",  tipo: "password" },
     { chave: "SUHAI_NEW_PASS", label: "Nova senha SUHAI",   tipo: "password" },
+  ],
+  3: [
+    { chave: "HARPER_URL",       label: "URL do sistema Quiver",          tipo: "text",     placeholder: "https://suacorretora.corretor-online.com.br/" },
+    { chave: "HARPER_USER",      label: "Usuário Quiver",                 tipo: "text" },
+    { chave: "HARPER_PASS",      label: "Senha Quiver",                   tipo: "password" },
+    { chave: "SEGURADORA_NOME",  label: "Nome da seguradora (ex: SUHAI)", tipo: "text",     placeholder: "SUHAI" },
+    { chave: "SEGURADORA_USER",  label: "Login da seguradora (se houver)",tipo: "text" },
+    { chave: "SEGURADORA_PASS",  label: "Nova senha da seguradora",       tipo: "password" },
   ],
 };
 

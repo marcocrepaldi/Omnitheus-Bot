@@ -14,6 +14,7 @@ scheduler = AsyncIOScheduler(timezone="America/Sao_Paulo")
 ROBOT_MAP = {
     1: "robots.quiver_credenciais",
     2: "robots.suhai_troca_senha",
+    3: "robots.quiver_atualiza_senha",
 }
 
 
