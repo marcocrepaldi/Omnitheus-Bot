@@ -7,6 +7,9 @@ import { authHeader } from "@/lib/auth";
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 interface Robo { id: number; nome: string; descricao: string; }
+
+// Robôs gerenciados pelo Cofre de Senhas — não precisam de credenciais manuais aqui
+const ROBOS_GERENCIADOS_PELO_COFRE = new Set([2, 3]);
 interface CredencialInfo { id: number; robo_id: number; campos: string[]; dados_publicos: Record<string, string>; }
 
 type Campo = { chave: string; label: string; tipo: "text" | "password"; placeholder?: string };
@@ -92,9 +95,21 @@ export default function CredenciaisPage() {
           <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Configure as credenciais de acesso para cada robô</p>
         </div>
 
+        {/* Aviso sobre robôs gerenciados pelo Cofre */}
+        <div className="mb-6 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-4 flex items-start gap-3">
+          <span className="text-lg mt-0.5">🔐</span>
+          <div>
+            <p className="text-white text-sm font-medium">Robôs 2 e 3 são gerenciados automaticamente pelo Cofre de Senhas</p>
+            <p className="text-neutral-500 text-xs mt-0.5">
+              As credenciais de <strong className="text-neutral-400">SUHAI</strong> e da <strong className="text-neutral-400">Central de Senhas do Quiver</strong> são lidas direto do{" "}
+              <a href="/cofre" className="text-red-400 hover:underline">Cofre</a> durante a Rotação Completa. Não é necessário configurá-las aqui.
+            </p>
+          </div>
+        </div>
+
         {/* Lista de robôs disponíveis */}
         <div className="space-y-3 mb-8">
-          {robos.map(r => (
+          {robos.filter(r => !ROBOS_GERENCIADOS_PELO_COFRE.has(r.id)).map(r => (
             <div key={r.id}
               onClick={() => selecionarRobo(r.id)}
               className={`cursor-pointer bg-white dark:bg-neutral-900 border rounded-xl p-5 flex items-center justify-between transition-all ${
