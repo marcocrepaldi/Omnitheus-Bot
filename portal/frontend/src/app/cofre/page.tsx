@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import ConfirmModal from "@/components/ConfirmModal";
 import { authHeader } from "@/lib/auth";
-import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink, Zap, CheckCircle, XCircle } from "lucide-react";
+import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink, Zap, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -32,6 +32,9 @@ export default function CofrePage() {
   const [loadingSenha, setLoadingSenha]     = useState<number | null>(null);
   const [rotacionando, setRotacionando]       = useState<number | null>(null);
   const [novaSenhaGerada, setNovaSenhaGerada] = useState<{ id: number; nome: string; senha: string } | null>(null);
+  const [editando, setEditando] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{ login: string; senha: string; url_portal: string; observacao: string }>({ login: "", senha: "", url_portal: "", observacao: "" });
+  const [salvandoEdit, setSalvandoEdit] = useState(false);
   const [rotacaoCompleta, setRotacaoCompleta] = useState<{
     id: number; nome: string;
     ex2: number; ex3: number;
@@ -134,6 +137,30 @@ export default function CofrePage() {
       setRotacaoCompleta(rc => rc ? ({ ...rc, status: "erro", etapa: "Timeout — verifique os Logs." }) : rc);
     };
     poll();
+  };
+
+  const abrirEdicao = (item: Cofre) => {
+    setEditando(item.id);
+    setEditForm({ login: item.login || "", senha: "", url_portal: item.url_portal || "", observacao: item.observacao || "" });
+  };
+
+  const salvarEdicao = async (item: Cofre) => {
+    if (!editForm.senha) { alert("Preencha a senha para salvar."); return; }
+    setSalvandoEdit(true);
+    await fetch(`${API}/cofre/`, {
+      method: "POST",
+      headers: { ...h(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        seguradora_nome: item.seguradora_nome,
+        login: editForm.login || item.login,
+        senha: editForm.senha,
+        url_portal: editForm.url_portal || item.url_portal,
+        observacao: editForm.observacao !== item.observacao ? editForm.observacao : item.observacao,
+      }),
+    });
+    setSalvandoEdit(false);
+    setEditando(null);
+    carregar();
   };
 
   const confirmarAcao = async () => {
@@ -276,98 +303,134 @@ export default function CofrePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {itens.map(item => {
                 const ficticia = item.observacao?.toLowerCase().includes("fictíc");
+                const emEdicao = editando === item.id;
                 return (
                   <div key={item.id} className={`bg-neutral-900 border rounded-xl flex flex-col transition-all ${
-                    ficticia ? "border-neutral-700 opacity-80" : "border-neutral-800 hover:border-neutral-600"
+                    emEdicao ? "border-red-500/50" : ficticia ? "border-neutral-700" : "border-neutral-800 hover:border-neutral-600"
                   }`}>
-                    {/* Card header */}
+                    {/* Header do card */}
                     <div className="p-4 flex items-start justify-between">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`p-2 rounded-lg shrink-0 ${ficticia ? "bg-neutral-800" : "bg-red-900/30"}`}>
-                          <KeyRound size={16} className={ficticia ? "text-neutral-500" : "text-red-400"} />
+                        <div className={`p-2 rounded-lg shrink-0 ${ficticia && !emEdicao ? "bg-neutral-800" : "bg-red-900/30"}`}>
+                          <KeyRound size={16} className={ficticia && !emEdicao ? "text-neutral-500" : "text-red-400"} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-white font-semibold text-sm truncate">{item.seguradora_nome}</p>
-                          {item.login && (
-                            <p className="text-neutral-500 text-xs mt-0.5 truncate">
-                              {item.login}
-                            </p>
+                          <p className="text-white font-semibold text-sm">{item.seguradora_nome}</p>
+                          {!emEdicao && item.login && (
+                            <p className="text-neutral-500 text-xs mt-0.5">{item.login}</p>
                           )}
                         </div>
                       </div>
-                      {/* Badges */}
-                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                        {ficticia && (
-                          <span className="text-xs bg-neutral-800 text-neutral-400 border border-neutral-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {ficticia && !emEdicao && (
+                          <span className="text-xs bg-neutral-800 text-neutral-400 border border-neutral-700 px-2 py-0.5 rounded-full">
                             pendente
                           </span>
                         )}
-                        {item.tem_senha_anterior && (
-                          <span className="text-xs bg-yellow-900/50 text-yellow-300 border border-yellow-800 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        {item.tem_senha_anterior && !emEdicao && (
+                          <span className="text-xs bg-yellow-900/50 text-yellow-300 border border-yellow-800 px-2 py-0.5 rounded-full">
                             rotação
                           </span>
+                        )}
+                        {/* Botão editar / fechar */}
+                        {emEdicao ? (
+                          <button onClick={() => setEditando(null)}
+                            className="text-neutral-500 hover:text-white p-1 rounded transition-colors">
+                            <X size={14} />
+                          </button>
+                        ) : (
+                          <button onClick={() => abrirEdicao(item)}
+                            title="Editar credencial"
+                            className="text-neutral-500 hover:text-white p-1 rounded transition-colors">
+                            <Pencil size={13} />
+                          </button>
                         )}
                       </div>
                     </div>
 
-                    {/* URL */}
-                    {item.url_portal && (
-                      <div className="px-4 pb-2">
-                        <a href={item.url_portal} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 truncate">
-                          <ExternalLink size={9} /> {item.url_portal.replace(/https?:\/\//, "")}
-                        </a>
+                    {/* Formulário de edição inline */}
+                    {emEdicao ? (
+                      <div className="px-4 pb-4 space-y-3">
+                        <div>
+                          <label className="text-xs text-neutral-500 mb-1 block">Login / Usuário</label>
+                          <input value={editForm.login} onChange={e => setEditForm(f => ({ ...f, login: e.target.value }))}
+                            placeholder="usuário no portal"
+                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-neutral-500 mb-1 block">Senha *</label>
+                          <input type="password" value={editForm.senha} onChange={e => setEditForm(f => ({ ...f, senha: e.target.value }))}
+                            placeholder="••••••••"
+                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-neutral-500 mb-1 block">URL do portal</label>
+                          <input value={editForm.url_portal} onChange={e => setEditForm(f => ({ ...f, url_portal: e.target.value }))}
+                            placeholder="https://..."
+                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => salvarEdicao(item)} disabled={salvandoEdit || !editForm.senha}
+                            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors flex-1 justify-center">
+                            <Save size={12} /> {salvandoEdit ? "Salvando..." : "Salvar credencial"}
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {/* URL */}
+                        {item.url_portal && (
+                          <div className="px-4 pb-3">
+                            <a href={item.url_portal} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 truncate">
+                              <ExternalLink size={9} /> {item.url_portal.replace(/https?:\/\//, "")}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Senha visível */}
+                        {senhasVisiveis[item.id] && (
+                          <div className="mx-4 mb-3 flex items-center gap-2 bg-neutral-800 rounded-lg px-3 py-2 border border-neutral-700">
+                            <code className="text-emerald-300 font-mono text-xs flex-1 truncate">{senhasVisiveis[item.id]}</code>
+                            <button onClick={() => navigator.clipboard.writeText(senhasVisiveis[item.id])}
+                              className="text-neutral-500 hover:text-white text-xs shrink-0">copiar</button>
+                          </div>
+                        )}
+
+                        {/* Ações */}
+                        <div className="mt-auto border-t border-neutral-800 p-3 flex flex-wrap gap-1.5">
+                          <button onClick={() => verSenha(item.id)}
+                            className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 py-1.5 rounded-lg transition-colors">
+                            {loadingSenha === item.id ? <RefreshCw size={10} className="animate-spin" /> : senhasVisiveis[item.id] ? <EyeOff size={10} /> : <Eye size={10} />}
+                            {senhasVisiveis[item.id] ? "Ocultar" : "Ver senha"}
+                          </button>
+
+                          {!ficticia && (
+                            <button onClick={() => iniciarRotacaoCompleta(item)}
+                              disabled={rotacaoCompleta?.status === "rodando"}
+                              className="flex items-center gap-1 text-xs text-neutral-400 hover:text-yellow-300 bg-neutral-800 hover:bg-yellow-900/30 disabled:opacity-40 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
+                              <Zap size={10} /> Rotação Auto
+                            </button>
+                          )}
+
+                          {item.tem_senha_anterior && (
+                            <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "rollback", nome: item.seguradora_nome })}
+                              className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-900/20 hover:bg-yellow-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
+                              <RotateCcw size={10} /> Rollback
+                            </button>
+                          )}
+
+                          <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "deletar", nome: item.seguradora_nome })}
+                            className="ml-auto text-neutral-600 hover:text-red-500 transition-colors p-1.5">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-neutral-700 px-3 pb-2 text-right">
+                          {format(new Date(item.atualizado_em || item.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
+                        </p>
+                      </>
                     )}
-
-                    {/* Senha visível */}
-                    {senhasVisiveis[item.id] && (
-                      <div className="mx-4 mb-3 flex items-center gap-2 bg-neutral-800 rounded-lg px-3 py-2 border border-neutral-700">
-                        <code className="text-emerald-300 font-mono text-xs flex-1 truncate">{senhasVisiveis[item.id]}</code>
-                        <button onClick={() => navigator.clipboard.writeText(senhasVisiveis[item.id])}
-                          className="text-neutral-500 hover:text-white text-xs shrink-0 transition-colors">copiar</button>
-                      </div>
-                    )}
-
-                    {/* Ações */}
-                    <div className="mt-auto border-t border-neutral-800 p-3 flex flex-wrap gap-1.5">
-                      <button onClick={() => verSenha(item.id)}
-                        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 py-1.5 rounded-lg transition-colors">
-                        {loadingSenha === item.id ? <RefreshCw size={10} className="animate-spin" /> : senhasVisiveis[item.id] ? <EyeOff size={10} /> : <Eye size={10} />}
-                        {senhasVisiveis[item.id] ? "Ocultar" : "Ver"}
-                      </button>
-
-                      {!ficticia && (
-                        <button onClick={() => iniciarRotacaoCompleta(item)}
-                          disabled={rotacaoCompleta?.status === "rodando"}
-                          className="flex items-center gap-1 text-xs text-neutral-400 hover:text-yellow-300 bg-neutral-800 hover:bg-yellow-900/30 disabled:opacity-40 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
-                          <Zap size={10} /> Rotação
-                        </button>
-                      )}
-
-                      <button onClick={() => rotacionar(item)}
-                        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-emerald-300 bg-neutral-800 hover:bg-emerald-900/30 px-2.5 py-1.5 rounded-lg transition-colors">
-                        {rotacionando === item.id ? <RefreshCw size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-                        Gerar senha
-                      </button>
-
-                      {item.tem_senha_anterior && (
-                        <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "rollback", nome: item.seguradora_nome })}
-                          className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 hover:bg-yellow-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
-                          <RotateCcw size={10} /> Rollback
-                        </button>
-                      )}
-
-                      <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "deletar", nome: item.seguradora_nome })}
-                        className="ml-auto text-neutral-600 hover:text-red-500 transition-colors p-1.5">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-
-                    {/* Data */}
-                    <p className="text-xs text-neutral-700 px-3 pb-2 text-right">
-                      {format(new Date(item.atualizado_em || item.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
-                    </p>
                   </div>
                 );
               })}
