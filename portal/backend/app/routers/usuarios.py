@@ -36,6 +36,10 @@ class UsuarioUpdate(BaseModel):
     ativo: bool | None = None
 
 
+class TrocaSenha(BaseModel):
+    nova_senha: str
+
+
 @router.get("/", response_model=List[UsuarioOut])
 def listar(
     db: Session = Depends(get_db),
@@ -85,6 +89,24 @@ def atualizar(
     db.commit()
     db.refresh(u)
     return u
+
+
+@router.patch("/{uid}/senha", status_code=200)
+def trocar_senha(
+    uid: int,
+    dados: TrocaSenha,
+    db: Session = Depends(get_db),
+    atual: Usuario = Depends(requer_role("admin"))
+):
+    """Admin/owner pode redefinir senha de qualquer usuário do mesmo tenant."""
+    u = db.query(Usuario).filter(Usuario.id == uid, Usuario.tenant_id == atual.tenant_id).first()
+    if not u:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if len(dados.nova_senha) < 6:
+        raise HTTPException(status_code=400, detail="Senha deve ter ao menos 6 caracteres")
+    u.senha_hash = hash_senha(dados.nova_senha)
+    db.commit()
+    return {"mensagem": f"Senha de {u.nome} atualizada com sucesso"}
 
 
 @router.delete("/{uid}", status_code=204)

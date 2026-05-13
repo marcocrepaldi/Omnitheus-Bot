@@ -13,7 +13,7 @@ export function salvarSessao(data: AuthUser) {
   localStorage.setItem("refresh_token", data.refresh_token);
   localStorage.setItem("user", JSON.stringify({ nome: data.nome, role: data.role, tenant_id: data.tenant_id }));
   // Cookie para o middleware Next.js poder verificar autenticação server-side
-  document.cookie = `access_token=${data.access_token}; path=/; max-age=900; SameSite=Strict`;
+  document.cookie = `access_token=${data.access_token}; path=/; max-age=604800; SameSite=Strict`;
 }
 
 export function limparSessao() {
