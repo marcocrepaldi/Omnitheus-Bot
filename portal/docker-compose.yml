@@ -21,8 +21,9 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=easypanel"
       - "traefik.http.routers.robos-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.robos-api.entrypoints=websecure"
+      - "traefik.http.routers.robos-api.entrypoints=https"
       - "traefik.http.routers.robos-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.robos-api.priority=20"
       - "traefik.http.middlewares.robos-strip.stripprefix.prefixes=/api"
       - "traefik.http.routers.robos-api.middlewares=robos-strip"
       - "traefik.http.services.robos-api.loadbalancer.server.port=8000"
@@ -39,8 +40,9 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=easypanel"
       - "traefik.http.routers.robos-www.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.robos-www.entrypoints=websecure"
+      - "traefik.http.routers.robos-www.entrypoints=https"
       - "traefik.http.routers.robos-www.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.robos-www.priority=10"
       - "traefik.http.services.robos-www.loadbalancer.server.port=3000"
 
 networks:
