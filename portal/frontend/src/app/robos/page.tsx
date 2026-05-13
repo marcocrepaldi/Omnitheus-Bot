@@ -6,6 +6,9 @@ import { Plus, Pencil, Trash2, Bot, Play } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
+// Robôs internos do fluxo de Rotação Completa — não exibidos para o usuário
+const ROBOS_INTERNOS = new Set([2, 3]);
+
 interface Robo { id: number; nome: string; descricao: string; ativo: boolean; criado_em: string; }
 
 export default function RobosPage() {
@@ -90,8 +93,8 @@ export default function RobosPage() {
         )}
 
         <div className="space-y-3">
-          {robos.length === 0 && <p className="text-neutral-500 text-sm">Nenhum robô cadastrado.</p>}
-          {robos.map(r => (
+          {robos.filter(r => !ROBOS_INTERNOS.has(r.id)).length === 0 && <p className="text-neutral-500 text-sm">Nenhum robô cadastrado.</p>}
+          {robos.filter(r => !ROBOS_INTERNOS.has(r.id)).map(r => (
             <div key={r.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="p-2 bg-red-900/40 rounded-lg"><Bot size={20} className="text-red-500" /></div>

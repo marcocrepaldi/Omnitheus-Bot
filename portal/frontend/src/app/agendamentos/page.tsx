@@ -73,7 +73,7 @@ export default function AgendamentosPage() {
               <select value={form.robo_id} onChange={e => setForm(f => ({ ...f, robo_id: Number(e.target.value) }))}
                 className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-2 text-neutral-900 dark:text-white text-sm">
                 <option value={0}>Selecione o robô...</option>
-                {robos.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                {robos.filter(r => ![2,3].includes(r.id)).map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
               </select>
               <div>
                 <input value={form.cron_expr} onChange={e => setForm(f => ({ ...f, cron_expr: e.target.value }))}
