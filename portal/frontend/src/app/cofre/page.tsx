@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import ConfirmModal from "@/components/ConfirmModal";
 import { authHeader } from "@/lib/auth";
-import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink } from "lucide-react";
+import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink, Zap, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -30,8 +30,14 @@ export default function CofrePage() {
   const [salvando, setSalvando]     = useState(false);
   const [senhasVisiveis, setSenhasVisiveis] = useState<Record<number, string>>({});
   const [loadingSenha, setLoadingSenha]     = useState<number | null>(null);
-  const [rotacionando, setRotacionando]     = useState<number | null>(null);
+  const [rotacionando, setRotacionando]       = useState<number | null>(null);
   const [novaSenhaGerada, setNovaSenhaGerada] = useState<{ id: number; nome: string; senha: string } | null>(null);
+  const [rotacaoCompleta, setRotacaoCompleta] = useState<{
+    id: number; nome: string;
+    ex2: number; ex3: number;
+    status: "rodando" | "sucesso" | "erro";
+    etapa: string;
+  } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ open: boolean; id: number; acao: "rollback" | "deletar"; nome: string }>({
     open: false, id: 0, acao: "deletar", nome: "",
   });
@@ -87,6 +93,49 @@ export default function CofrePage() {
     setRotacionando(null);
   };
 
+  const iniciarRotacaoCompleta = async (item: Cofre) => {
+    const r = await fetch(`${API}/cofre/${item.id}/rotacao-completa`, { method: "POST", headers: h() });
+    if (!r.ok) {
+      const err = await r.json();
+      alert(err.detail || "Erro ao iniciar rotação.");
+      return;
+    }
+    const d = await r.json();
+    setRotacaoCompleta({ id: item.id, nome: item.seguradora_nome, ex2: d.execucao_robo2_id, ex3: d.execucao_robo3_id, status: "rodando", etapa: "Robô 2 — Trocando senha no portal..." });
+
+    // Polling das execuções
+    const poll = async () => {
+      let tentativas = 0;
+      while (tentativas < 80) {
+        await new Promise(res => setTimeout(res, 8000));
+        tentativas++;
+        const resp = await fetch(`${API}/execucoes/?limit=50`, { headers: h() });
+        if (!resp.ok) continue;
+        const execucoes: any[] = await resp.json();
+        const ex2 = execucoes.find((e: any) => e.id === d.execucao_robo2_id);
+        const ex3 = execucoes.find((e: any) => e.id === d.execucao_robo3_id);
+
+        if (ex2?.status === "erro") {
+          setRotacaoCompleta(rc => rc ? ({ ...rc, status: "erro", etapa: `Robô 2 falhou: ${ex2.mensagem}` }) : rc);
+          carregar(); return;
+        }
+        if (ex2?.status === "sucesso" && ex3?.status === "em_execucao") {
+          setRotacaoCompleta(rc => rc ? ({ ...rc, etapa: "Robô 3 — Atualizando no Quiver..." }) : rc);
+        }
+        if (ex3?.status === "erro") {
+          setRotacaoCompleta(rc => rc ? ({ ...rc, status: "erro", etapa: `Robô 3 falhou: ${ex3.mensagem}` }) : rc);
+          carregar(); return;
+        }
+        if (ex3?.status === "sucesso") {
+          setRotacaoCompleta(rc => rc ? ({ ...rc, status: "sucesso", etapa: "Rotação completa! Senha atualizada no portal e no Quiver." }) : rc);
+          carregar(); return;
+        }
+      }
+      setRotacaoCompleta(rc => rc ? ({ ...rc, status: "erro", etapa: "Timeout — verifique os Logs." }) : rc);
+    };
+    poll();
+  };
+
   const confirmarAcao = async () => {
     const { id, acao } = confirmModal;
     setConfirmModal(c => ({ ...c, open: false }));
@@ -131,6 +180,37 @@ export default function CofrePage() {
               <button onClick={() => setNovaSenhaGerada(null)} className="text-neutral-500 hover:text-white">
                 <X size={18} />
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Painel de rotação completa */}
+        {rotacaoCompleta && (
+          <div className={`mb-6 rounded-xl p-5 border ${
+            rotacaoCompleta.status === "sucesso" ? "bg-emerald-900/30 border-emerald-700" :
+            rotacaoCompleta.status === "erro"    ? "bg-red-900/30 border-red-800" :
+                                                   "bg-blue-900/20 border-blue-800"
+          }`}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                {rotacaoCompleta.status === "rodando"  && <RefreshCw size={20} className="text-blue-400 animate-spin mt-0.5" />}
+                {rotacaoCompleta.status === "sucesso"  && <CheckCircle size={20} className="text-emerald-400 mt-0.5" />}
+                {rotacaoCompleta.status === "erro"     && <XCircle size={20} className="text-red-400 mt-0.5" />}
+                <div>
+                  <p className="font-semibold text-white">Rotação Completa — {rotacaoCompleta.nome}</p>
+                  <p className="text-sm text-neutral-400 mt-1">{rotacaoCompleta.etapa}</p>
+                  {rotacaoCompleta.status === "rodando" && (
+                    <div className="flex gap-4 mt-3 text-xs text-neutral-500">
+                      <span>EX-{String(rotacaoCompleta.ex2).padStart(4,"0")} Robô 2</span>
+                      <span>EX-{String(rotacaoCompleta.ex3).padStart(4,"0")} Robô 3</span>
+                      <a href="/logs" className="text-blue-400 hover:underline">Ver Logs →</a>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {rotacaoCompleta.status !== "rodando" && (
+                <button onClick={() => setRotacaoCompleta(null)} className="text-neutral-500 hover:text-white"><X size={16} /></button>
+              )}
             </div>
           </div>
         )}
@@ -225,12 +305,21 @@ export default function CofrePage() {
                       {senhasVisiveis[item.id] ? "Ocultar" : "Ver senha"}
                     </button>
 
-                    {/* Rotacionar */}
+                    {/* Rotação Completa */}
+                    <button
+                      onClick={() => iniciarRotacaoCompleta(item)}
+                      disabled={rotacaoCompleta?.status === "rodando"}
+                      title="Gera nova senha, troca no portal da seguradora e atualiza no Quiver"
+                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-yellow-300 bg-neutral-800 hover:bg-yellow-900/30 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                      <Zap size={12} /> Rotação Completa
+                    </button>
+
+                    {/* Rotacionar (só gera senha) */}
                     <button onClick={() => rotacionar(item)}
-                      title="Gerar nova senha automaticamente"
+                      title="Apenas gera e salva nova senha no cofre (sem disparar robôs)"
                       className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-emerald-300 bg-neutral-800 hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors">
                       {rotacionando === item.id ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                      Rotacionar
+                      Só gerar senha
                     </button>
 
                     {/* Rollback */}
