@@ -264,100 +264,115 @@ export default function CofrePage() {
           </div>
         )}
 
-        {/* Lista */}
+        {/* Grid 3 colunas */}
         {loading ? <p className="text-neutral-500 text-sm">Carregando...</p> : (
-          <div className="space-y-3">
+          <>
             {itens.length === 0 && (
               <div className="text-center py-16 text-neutral-500">
                 <ShieldCheck size={40} className="mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Nenhuma credencial no cofre ainda.</p>
               </div>
             )}
-            {itens.map(item => (
-              <div key={item.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-red-900/30 rounded-lg"><KeyRound size={20} className="text-red-400" /></div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-white font-semibold">{item.seguradora_nome}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {itens.map(item => {
+                const ficticia = item.observacao?.toLowerCase().includes("fictíc");
+                return (
+                  <div key={item.id} className={`bg-neutral-900 border rounded-xl flex flex-col transition-all ${
+                    ficticia ? "border-neutral-700 opacity-80" : "border-neutral-800 hover:border-neutral-600"
+                  }`}>
+                    {/* Card header */}
+                    <div className="p-4 flex items-start justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-2 rounded-lg shrink-0 ${ficticia ? "bg-neutral-800" : "bg-red-900/30"}`}>
+                          <KeyRound size={16} className={ficticia ? "text-neutral-500" : "text-red-400"} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white font-semibold text-sm truncate">{item.seguradora_nome}</p>
+                          {item.login && (
+                            <p className="text-neutral-500 text-xs mt-0.5 truncate">
+                              {item.login}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Badges */}
+                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                        {ficticia && (
+                          <span className="text-xs bg-neutral-800 text-neutral-400 border border-neutral-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            pendente
+                          </span>
+                        )}
                         {item.tem_senha_anterior && (
-                          <span className="text-xs bg-yellow-900/50 text-yellow-300 border border-yellow-800 px-2 py-0.5 rounded-full">rotação pendente</span>
+                          <span className="text-xs bg-yellow-900/50 text-yellow-300 border border-yellow-800 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            rotação
+                          </span>
                         )}
                       </div>
-                      {item.login && <p className="text-neutral-400 text-xs mt-0.5">Login: {item.login}</p>}
-                      {item.url_portal && (
-                        <a href={item.url_portal} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-0.5">
-                          <ExternalLink size={10} /> {item.url_portal}
-                        </a>
-                      )}
-                      {item.observacao && <p className="text-neutral-500 text-xs mt-0.5 italic">{item.observacao}</p>}
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Ver senha */}
-                    <button onClick={() => verSenha(item.id)}
-                      title={senhasVisiveis[item.id] ? "Ocultar senha" : "Ver senha"}
-                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-lg transition-colors">
-                      {loadingSenha === item.id ? <RefreshCw size={12} className="animate-spin" /> : senhasVisiveis[item.id] ? <EyeOff size={12} /> : <Eye size={12} />}
-                      {senhasVisiveis[item.id] ? "Ocultar" : "Ver senha"}
-                    </button>
-
-                    {/* Rotação Completa */}
-                    <button
-                      onClick={() => iniciarRotacaoCompleta(item)}
-                      disabled={rotacaoCompleta?.status === "rodando"}
-                      title="Gera nova senha, troca no portal da seguradora e atualiza no Quiver"
-                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-yellow-300 bg-neutral-800 hover:bg-yellow-900/30 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                      <Zap size={12} /> Rotação Completa
-                    </button>
-
-                    {/* Rotacionar (só gera senha) */}
-                    <button onClick={() => rotacionar(item)}
-                      title="Apenas gera e salva nova senha no cofre (sem disparar robôs)"
-                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-emerald-300 bg-neutral-800 hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors">
-                      {rotacionando === item.id ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                      Só gerar senha
-                    </button>
-
-                    {/* Rollback */}
-                    {item.tem_senha_anterior && (
-                      <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "rollback", nome: item.seguradora_nome })}
-                        title="Restaurar senha anterior"
-                        className="flex items-center gap-1.5 text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 hover:bg-yellow-900/40 px-3 py-1.5 rounded-lg transition-colors">
-                        <RotateCcw size={12} /> Rollback
-                      </button>
+                    {/* URL */}
+                    {item.url_portal && (
+                      <div className="px-4 pb-2">
+                        <a href={item.url_portal} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 truncate">
+                          <ExternalLink size={9} /> {item.url_portal.replace(/https?:\/\//, "")}
+                        </a>
+                      </div>
                     )}
 
-                    {/* Deletar */}
-                    <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "deletar", nome: item.seguradora_nome })}
-                      className="text-neutral-500 hover:text-red-500 transition-colors p-1.5">
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
+                    {/* Senha visível */}
+                    {senhasVisiveis[item.id] && (
+                      <div className="mx-4 mb-3 flex items-center gap-2 bg-neutral-800 rounded-lg px-3 py-2 border border-neutral-700">
+                        <code className="text-emerald-300 font-mono text-xs flex-1 truncate">{senhasVisiveis[item.id]}</code>
+                        <button onClick={() => navigator.clipboard.writeText(senhasVisiveis[item.id])}
+                          className="text-neutral-500 hover:text-white text-xs shrink-0 transition-colors">copiar</button>
+                      </div>
+                    )}
 
-                {/* Senha visível */}
-                {senhasVisiveis[item.id] && (
-                  <div className="mt-3 flex items-center gap-3 bg-neutral-800 rounded-lg px-4 py-2.5 border border-neutral-700">
-                    <span className="text-xs text-neutral-500">Senha:</span>
-                    <code className="text-emerald-300 font-mono text-sm flex-1">{senhasVisiveis[item.id]}</code>
-                    <button onClick={() => navigator.clipboard.writeText(senhasVisiveis[item.id])}
-                      className="text-xs text-neutral-500 hover:text-white transition-colors">copiar</button>
-                  </div>
-                )}
+                    {/* Ações */}
+                    <div className="mt-auto border-t border-neutral-800 p-3 flex flex-wrap gap-1.5">
+                      <button onClick={() => verSenha(item.id)}
+                        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 py-1.5 rounded-lg transition-colors">
+                        {loadingSenha === item.id ? <RefreshCw size={10} className="animate-spin" /> : senhasVisiveis[item.id] ? <EyeOff size={10} /> : <Eye size={10} />}
+                        {senhasVisiveis[item.id] ? "Ocultar" : "Ver"}
+                      </button>
 
-                {/* Última atualização */}
-                <p className="text-xs text-neutral-600 mt-2 text-right">
-                  Atualizado: {item.atualizado_em
-                    ? format(new Date(item.atualizado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                    : format(new Date(item.criado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                </p>
-              </div>
-            ))}
-          </div>
+                      {!ficticia && (
+                        <button onClick={() => iniciarRotacaoCompleta(item)}
+                          disabled={rotacaoCompleta?.status === "rodando"}
+                          className="flex items-center gap-1 text-xs text-neutral-400 hover:text-yellow-300 bg-neutral-800 hover:bg-yellow-900/30 disabled:opacity-40 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
+                          <Zap size={10} /> Rotação
+                        </button>
+                      )}
+
+                      <button onClick={() => rotacionar(item)}
+                        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-emerald-300 bg-neutral-800 hover:bg-emerald-900/30 px-2.5 py-1.5 rounded-lg transition-colors">
+                        {rotacionando === item.id ? <RefreshCw size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                        Gerar senha
+                      </button>
+
+                      {item.tem_senha_anterior && (
+                        <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "rollback", nome: item.seguradora_nome })}
+                          className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 hover:bg-yellow-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
+                          <RotateCcw size={10} /> Rollback
+                        </button>
+                      )}
+
+                      <button onClick={() => setConfirmModal({ open: true, id: item.id, acao: "deletar", nome: item.seguradora_nome })}
+                        className="ml-auto text-neutral-600 hover:text-red-500 transition-colors p-1.5">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+
+                    {/* Data */}
+                    <p className="text-xs text-neutral-700 px-3 pb-2 text-right">
+                      {format(new Date(item.atualizado_em || item.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </main>
 
