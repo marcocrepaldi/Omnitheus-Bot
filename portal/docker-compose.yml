@@ -15,6 +15,7 @@ services:
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
       - EMAIL_TO=${EMAIL_TO}
+      - VAULT_KEY=${VAULT_KEY}
     networks:
       - easypanel
     labels:
