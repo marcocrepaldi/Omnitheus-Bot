@@ -8,14 +8,12 @@ const API = process.env.NEXT_PUBLIC_API_URL;
 
 interface Robo { id: number; nome: string; descricao: string; }
 
-// Robôs gerenciados pelo Cofre de Senhas — não precisam de credenciais manuais aqui
 const ROBOS_GERENCIADOS_PELO_COFRE = new Set([2, 3]);
+
 interface CredencialInfo { id: number; robo_id: number; campos: string[]; dados_publicos: Record<string, string>; }
 
 type Campo = { chave: string; label: string; tipo: "text" | "password"; placeholder?: string };
 
-// Campos que o CLIENTE cadastra
-// 2captcha e e-mail remetente são da plataforma (env do servidor)
 const CAMPOS_POR_ROBO: Record<number, Campo[]> = {
   1: [
     { chave: "HARPER_URL",  label: "URL do sistema Quiver",       tipo: "text",     placeholder: "https://suacorretora.corretor-online.com.br/" },
@@ -24,28 +22,28 @@ const CAMPOS_POR_ROBO: Record<number, Campo[]> = {
     { chave: "EMAIL_TO",    label: "E-mail para receber alertas", tipo: "text",     placeholder: "ti@suacorretora.com.br" },
   ],
   2: [
-    { chave: "SUHAI_USER",     label: "Usuário SUHAI",      tipo: "text",     placeholder: "suhai3148" },
-    { chave: "SUHAI_PASS",     label: "Senha atual SUHAI",  tipo: "password" },
-    { chave: "SUHAI_NEW_PASS", label: "Nova senha SUHAI",   tipo: "password" },
+    { chave: "SUHAI_USER",     label: "Usuário SUHAI",     tipo: "text",     placeholder: "suhai3148" },
+    { chave: "SUHAI_PASS",     label: "Senha atual SUHAI", tipo: "password" },
+    { chave: "SUHAI_NEW_PASS", label: "Nova senha SUHAI",  tipo: "password" },
   ],
   3: [
-    { chave: "HARPER_URL",       label: "URL do sistema Quiver",          tipo: "text",     placeholder: "https://suacorretora.corretor-online.com.br/" },
-    { chave: "HARPER_USER",      label: "Usuário Quiver",                 tipo: "text" },
-    { chave: "HARPER_PASS",      label: "Senha Quiver",                   tipo: "password" },
-    { chave: "SEGURADORA_NOME",  label: "Nome da seguradora (ex: SUHAI)", tipo: "text",     placeholder: "SUHAI" },
-    { chave: "SEGURADORA_USER",  label: "Login da seguradora (se houver)",tipo: "text" },
-    { chave: "SEGURADORA_PASS",  label: "Nova senha da seguradora",       tipo: "password" },
+    { chave: "HARPER_URL",      label: "URL do sistema Quiver",           tipo: "text",     placeholder: "https://suacorretora.corretor-online.com.br/" },
+    { chave: "HARPER_USER",     label: "Usuário Quiver",                  tipo: "text" },
+    { chave: "HARPER_PASS",     label: "Senha Quiver",                    tipo: "password" },
+    { chave: "SEGURADORA_NOME", label: "Nome da seguradora (ex: SUHAI)",  tipo: "text",     placeholder: "SUHAI" },
+    { chave: "SEGURADORA_USER", label: "Login da seguradora",             tipo: "text" },
+    { chave: "SEGURADORA_PASS", label: "Nova senha da seguradora",        tipo: "password" },
   ],
 };
 
 export default function CredenciaisPage() {
-  const [robos, setRobos]           = useState<Robo[]>([]);
+  const [robos, setRobos]             = useState<Robo[]>([]);
   const [credenciais, setCredenciais] = useState<CredencialInfo[]>([]);
   const [roboSelecionado, setRoboSelecionado] = useState<number | null>(null);
-  const [form, setForm]             = useState<Record<string, string>>({});
-  const [mostrar, setMostrar]       = useState<Record<string, boolean>>({});
-  const [salvando, setSalvando]     = useState(false);
-  const [salvo, setSalvo]           = useState(false);
+  const [form, setForm]               = useState<Record<string, string>>({});
+  const [mostrar, setMostrar]         = useState<Record<string, boolean>>({});
+  const [salvando, setSalvando]       = useState(false);
+  const [salvo, setSalvo]             = useState(false);
 
   useEffect(() => {
     const h = authHeader();
@@ -54,10 +52,8 @@ export default function CredenciaisPage() {
   }, []); // eslint-disable-line
 
   const selecionarRobo = (id: number) => {
-    setRoboSelecionado(id);
-    setSalvo(false);
+    setRoboSelecionado(id); setSalvo(false);
     const campos = CAMPOS_POR_ROBO[id] ?? [];
-    // Pré-preenche campos de texto com valores já salvos; senha sempre fica vazia
     const credAtual = credenciais.find(c => c.robo_id === id);
     const dadosPublicos = credAtual?.dados_publicos ?? {};
     setForm(Object.fromEntries(
@@ -68,10 +64,7 @@ export default function CredenciaisPage() {
   const salvar = async () => {
     if (!roboSelecionado) return;
     setSalvando(true);
-    // Filtra apenas campos preenchidos
-    const dadosFiltrados = Object.fromEntries(
-      Object.entries(form).filter(([, v]) => v.trim() !== "")
-    );
+    const dadosFiltrados = Object.fromEntries(Object.entries(form).filter(([, v]) => v.trim() !== ""));
     const res = await fetch(`${API}/credenciais/`, {
       method: "POST",
       headers: { ...authHeader(), "Content-Type": "application/json" },
@@ -85,56 +78,65 @@ export default function CredenciaisPage() {
   };
 
   const temCredencial = (roboId: number) => credenciais.some(c => c.robo_id === roboId);
+  const robosVisiveis = robos.filter(r => !ROBOS_GERENCIADOS_PELO_COFRE.has(r.id));
 
   return (
     <div className="flex">
       <Sidebar />
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Credenciais</h2>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Configure as credenciais de acesso para cada robô</p>
         </div>
 
-        {/* Aviso sobre robôs gerenciados pelo Cofre */}
+        {/* Aviso cofre */}
         <div className="mb-6 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-4 flex items-start gap-3">
           <span className="text-lg mt-0.5">🔐</span>
           <div>
             <p className="text-white text-sm font-medium">Robôs 2 e 3 são gerenciados automaticamente pelo Cofre de Senhas</p>
             <p className="text-neutral-500 text-xs mt-0.5">
-              As credenciais de <strong className="text-neutral-400">SUHAI</strong> e da <strong className="text-neutral-400">Central de Senhas do Quiver</strong> são lidas direto do{" "}
-              <a href="/cofre" className="text-red-400 hover:underline">Cofre</a> durante a Rotação Completa. Não é necessário configurá-las aqui.
+              As credenciais de <strong className="text-neutral-400">SUHAI</strong> e <strong className="text-neutral-400">Central de Senhas do Quiver</strong> são lidas direto do{" "}
+              <a href="/cofre" className="text-red-400 hover:underline">Cofre</a> durante a Rotação Completa.
             </p>
           </div>
         </div>
 
-        {/* Lista de robôs disponíveis */}
-        <div className="space-y-3 mb-8">
-          {robos.filter(r => !ROBOS_GERENCIADOS_PELO_COFRE.has(r.id)).map(r => (
-            <div key={r.id}
+        {/* Grid de robôs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+          {robosVisiveis.map(r => (
+            <button
+              key={r.id}
               onClick={() => selecionarRobo(r.id)}
-              className={`cursor-pointer bg-white dark:bg-neutral-900 border rounded-xl p-5 flex items-center justify-between transition-all ${
-                roboSelecionado === r.id ? "border-blue-500" : "border-neutral-200 dark:border-neutral-800 hover:border-gray-600"
-              }`}>
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg"><KeyRound size={18} className="text-gray-300" /></div>
-                <div>
-                  <p className="text-neutral-900 dark:text-white font-medium">{r.nome}</p>
-                  <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{r.descricao}</p>
+              className={`text-left bg-white dark:bg-neutral-900 border rounded-xl p-5 flex flex-col gap-3 transition-all ${
+                roboSelecionado === r.id
+                  ? "border-red-500 ring-1 ring-red-500/30"
+                  : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+                  <KeyRound size={18} className={roboSelecionado === r.id ? "text-red-400" : "text-neutral-400"} />
                 </div>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                  temCredencial(r.id)
+                    ? "bg-emerald-900/50 text-emerald-300 border border-emerald-800"
+                    : "bg-yellow-900/40 text-yellow-300 border border-yellow-800"
+                }`}>
+                  {temCredencial(r.id) ? "✓ Configurado" : "Pendente"}
+                </span>
               </div>
-              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                temCredencial(r.id) ? "bg-emerald-900 text-emerald-300" : "bg-yellow-900 text-yellow-300"
-              }`}>
-                {temCredencial(r.id) ? "✓ Configurado" : "Pendente"}
-              </span>
-            </div>
+              <div>
+                <p className="text-neutral-900 dark:text-white font-semibold text-sm">{r.nome}</p>
+                <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5 line-clamp-2">{r.descricao}</p>
+              </div>
+            </button>
           ))}
         </div>
 
         {/* Formulário de credenciais */}
         {roboSelecionado && (
-          <div className="bg-white dark:bg-neutral-900 border border-blue-500/30 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">
+          <div className="bg-white dark:bg-neutral-900 border border-red-500/30 rounded-xl p-6">
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">
               {robos.find(r => r.id === roboSelecionado)?.nome}
             </h3>
             <p className="text-neutral-500 text-xs mb-6">
@@ -166,7 +168,7 @@ export default function CredenciaisPage() {
 
             <div className="flex items-center gap-4 mt-6">
               <button onClick={salvar} disabled={salvando}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-neutral-900 dark:text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">
                 <Save size={16} /> {salvando ? "Salvando..." : "Salvar Credenciais"}
               </button>
               {salvo && (

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import ConfirmModal from "@/components/ConfirmModal";
 import { authHeader } from "@/lib/auth";
-import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink, Zap, CheckCircle, XCircle, Pencil } from "lucide-react";
+import { ShieldCheck, Plus, Eye, EyeOff, RefreshCw, RotateCcw, Trash2, Save, X, KeyRound, ExternalLink, Zap, CheckCircle, XCircle, Pencil, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -24,6 +24,7 @@ const emptyForm = { seguradora_nome: "", login: "", senha: "", url_portal: "", o
 
 export default function CofrePage() {
   const [itens, setItens]           = useState<Cofre[]>([]);
+  const [busca, setBusca]           = useState("");
   const [loading, setLoading]       = useState(true);
   const [showForm, setShowForm]     = useState(false);
   const [form, setForm]             = useState(emptyForm);
@@ -181,7 +182,7 @@ export default function CofrePage() {
       <Sidebar />
       <main className="flex-1 p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
               <ShieldCheck size={24} className="text-red-500" /> Cofre de Senhas
@@ -189,9 +190,29 @@ export default function CofrePage() {
             <p className="text-neutral-500 text-sm mt-1">Credenciais das seguradoras — armazenadas com criptografia AES</p>
           </div>
           <button onClick={() => { setShowForm(true); setForm(emptyForm); }}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0">
             <Plus size={16} /> Nova Credencial
           </button>
+        </div>
+
+        {/* Busca */}
+        <div className="relative mb-6">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar por seguradora, login ou observação..."
+            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-10 py-2.5 text-neutral-900 dark:text-white placeholder-neutral-400 text-sm focus:outline-none focus:border-red-500 transition-colors"
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         {/* Nova senha gerada */}
@@ -295,14 +316,39 @@ export default function CofrePage() {
         {/* Grid 3 colunas */}
         {loading ? <p className="text-neutral-500 text-sm">Carregando...</p> : (
           <>
-            {itens.length === 0 && (
-              <div className="text-center py-16 text-neutral-500">
-                <ShieldCheck size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Nenhuma credencial no cofre ainda.</p>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {itens.map(item => {
+            {(() => {
+              const q = busca.toLowerCase().trim();
+              const filtrados = q
+                ? itens.filter(i =>
+                    i.seguradora_nome.toLowerCase().includes(q) ||
+                    (i.login ?? "").toLowerCase().includes(q) ||
+                    (i.observacao ?? "").toLowerCase().includes(q)
+                  )
+                : itens;
+              return (
+                <>
+                  {itens.length === 0 && (
+                    <div className="text-center py-16 text-neutral-500">
+                      <ShieldCheck size={40} className="mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">Nenhuma credencial no cofre ainda.</p>
+                    </div>
+                  )}
+                  {itens.length > 0 && filtrados.length === 0 && (
+                    <div className="text-center py-16 text-neutral-500">
+                      <Search size={36} className="mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">Nenhuma seguradora encontrada para <strong className="text-neutral-300">"{busca}"</strong></p>
+                      <button onClick={() => setBusca("")} className="text-red-400 hover:underline text-xs mt-2">Limpar busca</button>
+                    </div>
+                  )}
+                  {filtrados.length > 0 && (
+                    <>
+                      {busca && (
+                        <p className="text-xs text-neutral-500 mb-3">
+                          {filtrados.length} resultado{filtrados.length !== 1 ? "s" : ""} para <strong className="text-neutral-300">"{busca}"</strong>
+                        </p>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filtrados.map(item => {
                 const ficticia = item.observacao?.toLowerCase().includes("fictíc");
                 const emEdicao = editando === item.id;
                 return (
@@ -452,8 +498,13 @@ export default function CofrePage() {
                     )}
                   </div>
                 );
-              })}
-            </div>
+                        })}
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
       </main>
