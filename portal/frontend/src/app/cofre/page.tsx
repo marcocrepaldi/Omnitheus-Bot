@@ -30,6 +30,7 @@ export default function CofrePage() {
   const [salvando, setSalvando]     = useState(false);
   const [senhasVisiveis, setSenhasVisiveis] = useState<Record<number, string>>({});
   const [loadingSenha, setLoadingSenha]     = useState<number | null>(null);
+  const [copiado, setCopiado]               = useState<number | null>(null);
   const [rotacionando, setRotacionando]       = useState<number | null>(null);
   const [novaSenhaGerada, setNovaSenhaGerada] = useState<{ id: number; nome: string; senha: string } | null>(null);
   const [editando, setEditando] = useState<number | null>(null);
@@ -390,18 +391,36 @@ export default function CofrePage() {
 
                         {/* Senha visível */}
                         {senhasVisiveis[item.id] && (
-                          <div className="mx-4 mb-3 flex items-center gap-2 bg-neutral-800 rounded-lg px-3 py-2 border border-neutral-700">
-                            <code className="text-emerald-300 font-mono text-xs flex-1 truncate">{senhasVisiveis[item.id]}</code>
-                            <button onClick={() => navigator.clipboard.writeText(senhasVisiveis[item.id])}
-                              className="text-neutral-500 hover:text-white text-xs shrink-0">copiar</button>
+                          <div className="mx-4 mb-3 bg-neutral-800 rounded-lg border border-emerald-800/50">
+                            <div className="flex items-center gap-2 px-3 py-2">
+                              <span className="text-xs text-neutral-500 shrink-0">Senha:</span>
+                              <code className="text-emerald-300 font-mono text-sm flex-1 break-all select-all">
+                                {senhasVisiveis[item.id]}
+                              </code>
+                              <button
+                                onClick={async () => {
+                                  await navigator.clipboard.writeText(senhasVisiveis[item.id] ?? "");
+                                  setCopiado(item.id);
+                                  setTimeout(() => setCopiado(null), 2000);
+                                }}
+                                className="text-xs shrink-0 px-2 py-1 rounded bg-neutral-700 hover:bg-neutral-600 transition-colors text-neutral-300 hover:text-white">
+                                {copiado === item.id ? "✓ copiado" : "copiar"}
+                              </button>
+                            </div>
                           </div>
                         )}
 
                         {/* Ações */}
                         <div className="mt-auto border-t border-neutral-800 p-3 flex flex-wrap gap-1.5">
                           <button onClick={() => verSenha(item.id)}
-                            className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 py-1.5 rounded-lg transition-colors">
-                            {loadingSenha === item.id ? <RefreshCw size={10} className="animate-spin" /> : senhasVisiveis[item.id] ? <EyeOff size={10} /> : <Eye size={10} />}
+                            className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
+                              senhasVisiveis[item.id]
+                                ? "text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/40"
+                                : "text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700"
+                            }`}>
+                            {loadingSenha === item.id
+                              ? <RefreshCw size={10} className="animate-spin" />
+                              : senhasVisiveis[item.id] ? <EyeOff size={10} /> : <Eye size={10} />}
                             {senhasVisiveis[item.id] ? "Ocultar" : "Ver senha"}
                           </button>
 
