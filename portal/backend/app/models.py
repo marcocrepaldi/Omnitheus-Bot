@@ -112,6 +112,112 @@ class CofreSenha(Base):
     criado_em        = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class CofreItem(Base):
+    """Cofre estilo 1Password — campos dinâmicos com criptografia por campo."""
+    __tablename__ = "cofre_itens"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    tenant_id     = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    categoria     = Column(String(20), nullable=False, default="outro")
+    # Legado — mantido por compat. Use categoria_id para o novo RBAC.
+    categoria_id  = Column(Integer, ForeignKey("categorias_cofre.id"), nullable=True, index=True)
+    nome          = Column(String(200), nullable=False)
+    url           = Column(String(500), nullable=True)
+    tags          = Column(JSON, nullable=False, default=list)
+    notas         = Column(Text, nullable=True)
+    campos        = Column(JSON, nullable=False, default=list)
+    historico     = Column(JSON, nullable=False, default=list)
+    robo_vinculo  = Column(Integer, nullable=True)
+    criado_em     = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ─── RBAC v2 — Categorias, Roles, Times, Auditoria ──────────────────────────
+
+class CategoriaCofre(Base):
+    """Categorias customizáveis do cofre, por tenant."""
+    __tablename__ = "categorias_cofre"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_cat_tenant_slug"),)
+
+    id          = Column(Integer, primary_key=True, index=True)
+    tenant_id   = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    nome        = Column(String(80),  nullable=False)
+    slug        = Column(String(80),  nullable=False)
+    icone       = Column(String(40),  nullable=True)     # nome do ícone lucide-react
+    cor         = Column(String(20),  nullable=True)     # hex ou nome tailwind
+    ordem       = Column(Integer,     nullable=False, default=0)
+    sistema     = Column(Boolean,     default=False)     # categoria do template (não pode deletar)
+    criado_em   = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Role(Base):
+    """Papel (role) customizável com lista de permissões."""
+    __tablename__ = "roles"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_role_tenant_slug"),)
+
+    id          = Column(Integer, primary_key=True, index=True)
+    tenant_id   = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    nome        = Column(String(80),  nullable=False)
+    slug        = Column(String(80),  nullable=False)
+    descricao   = Column(Text,        nullable=True)
+    sistema     = Column(Boolean,     default=False)     # roles do template (não pode deletar)
+    permissoes  = Column(JSON,        nullable=False, default=list)
+    # Lista de strings: ["cofre:view@*", "cofre:reveal@cat:5", "robos:execute"]
+    criado_em   = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Team(Base):
+    """Time/grupo de usuários — agrupa permissões via roles."""
+    __tablename__ = "teams"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_team_tenant_slug"),)
+
+    id          = Column(Integer, primary_key=True, index=True)
+    tenant_id   = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    nome        = Column(String(80),  nullable=False)
+    slug        = Column(String(80),  nullable=False)
+    descricao   = Column(Text,        nullable=True)
+    cor         = Column(String(20),  nullable=True)
+    criado_em   = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class TeamMember(Base):
+    """Usuários membros de times — N:N."""
+    __tablename__ = "team_members"
+    __table_args__ = (UniqueConstraint("team_id", "usuario_id", name="uq_team_user"),)
+
+    id          = Column(Integer, primary_key=True, index=True)
+    team_id     = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    usuario_id  = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    criado_em   = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class TeamRole(Base):
+    """Roles atribuídas a times — N:N."""
+    __tablename__ = "team_roles"
+    __table_args__ = (UniqueConstraint("team_id", "role_id", name="uq_team_role"),)
+
+    id          = Column(Integer, primary_key=True, index=True)
+    team_id     = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    role_id     = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, index=True)
+
+
+class AuditLog(Base):
+    """Log de auditoria — ações sensíveis: revelar senha, editar, deletar, listar cofre."""
+    __tablename__ = "audit_log"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    tenant_id     = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    usuario_id    = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    acao          = Column(String(80),  nullable=False, index=True)
+    # Ex: "cofre:reveal", "cofre:edit", "cofre:list", "cofre:delete", "usuarios:create"
+    recurso_tipo  = Column(String(40),  nullable=True)   # cofre_item, usuario, role, team...
+    recurso_id    = Column(Integer,     nullable=True)
+    detalhes      = Column(JSON,        nullable=True)
+    ip            = Column(String(45),  nullable=True)
+    user_agent    = Column(Text,        nullable=True)
+    criado_em     = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
 class Execucao(Base):
     __tablename__ = "execucoes"
 

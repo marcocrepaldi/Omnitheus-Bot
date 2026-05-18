@@ -68,6 +68,8 @@ async def executar_robo(robo_id: int, tenant_id: int = 1):
         execucao.finalizado_em        = datetime.now(timezone.utc)
         db.commit()
         logger.info(f"Robô {robo_id} | tenant {tenant_id} | finalizado: {resultado['status']}")
+        # Robô 1 só detecta e envia email — cliente é quem recupera senha manualmente
+        # e depois usa o botão "Sincronizar com Quiver" no cofre (que roda Robô 3 sozinho).
     except asyncio.TimeoutError:
         execucao.status        = "erro"
         execucao.mensagem      = f"Timeout: execução ultrapassou {TIMEOUT_SEGUNDOS//60} minutos e foi cancelada."

@@ -201,6 +201,35 @@ async def executar() -> dict:
             cred = _json.loads(cred_json)
             id_cred = cred.get("idCredencial")
             logger.info(f"Credencial obtida: idCredencial={id_cred} usuario={cred.get('usuarioCredencial')}")
+
+            # ── 4.1 NORMALIZA CHECKBOXES INDETERMINADOS ─────────────────────
+            # Quando a senha expira no portal, o Quiver marca os checkboxes
+            # como 'X' (estado amarelo/indeterminado). O PUT precisa receber
+            # 'S' (sim) ou 'N' (não) para que o backend aceite a atualização.
+            # ng-true-value="S" / ng-false-value="N" / ng-indeterminate-value="X"
+            CAMPOS_CHECKBOX = [
+                "comissaoCredencial", "emissaoCredencial", "propostaCredencial",
+                "parcelasCredencial", "calculoCredencial", "loginAutomaticoCredencial",
+                "credencialPadrao", "integracoesCredencial", "sinistroCredencial",
+            ]
+            normalizados = []
+            for campo in CAMPOS_CHECKBOX:
+                if cred.get(campo) in ("X", None):
+                    valor_anterior = cred.get(campo)
+                    # Para os 7 checkboxes principais, 'S' (sim) preserva a funcionalidade
+                    # ativa que o usuário esperava. integracoes/sinistro default = 'N'.
+                    novo = "N" if campo in ("integracoesCredencial", "sinistroCredencial") else "S"
+                    cred[campo] = novo
+                    normalizados.append(f"{campo}: {valor_anterior} → {novo}")
+
+            if normalizados:
+                logger.warning(
+                    f"⚠️  {len(normalizados)} checkbox(es) indeterminado(s) detectados (estado amarelo) — normalizando:\n   "
+                    + "\n   ".join(normalizados)
+                )
+            else:
+                logger.info("Todos os checkboxes em estado válido (S/N).")
+
             await page.wait_for_timeout(3000)
 
             # ── 5. Atualiza senha via PUT direto na API ─────────────────────
@@ -256,10 +285,11 @@ async def executar() -> dict:
                 raise RuntimeError(f"PUT falhou (status={status_put}): {body_put}")
 
             logger.info(f"✅ Senha de {seguradora_nome} atualizada no Quiver com sucesso!")
+            msg_norm = f" · {len(normalizados)} checkbox(es) indeterminados foram normalizados (S/N)" if normalizados else ""
             return {
                 "status": "sucesso",
                 "credenciais_com_erro": [],
-                "mensagem": f"Credencial '{seguradora_nome}' atualizada no Quiver via API (idCredencial={id_cred}).",
+                "mensagem": f"Credencial '{seguradora_nome}' atualizada no Quiver (idCredencial={id_cred}){msg_norm}.",
             }
 
         except Exception as exc:

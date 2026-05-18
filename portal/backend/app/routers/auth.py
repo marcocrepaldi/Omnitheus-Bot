@@ -3,10 +3,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr
+from typing import List
 from ..database import get_db
 from ..models import Usuario, RefreshToken
 from ..security import verificar_senha, criar_access_token, criar_refresh_token, decodificar_token, hash_senha
 from ..deps import get_usuario_atual
+from ..permissions import permissoes_efetivas
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,6 +20,7 @@ class TokenResponse(BaseModel):
     role: str
     tenant_id: int
     nome: str
+    permissoes: List[str] = []
 
 
 class RefreshRequest(BaseModel):
@@ -30,8 +33,7 @@ class MeResponse(BaseModel):
     email: str
     role: str
     tenant_id: int
-    class Config:
-        from_attributes = True
+    permissoes: List[str] = []
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -47,19 +49,18 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             detail="E-mail ou senha incorretos"
         )
 
-    payload = {"sub": str(usuario.id), "tenant_id": usuario.tenant_id, "role": usuario.role}
+    perms = sorted(permissoes_efetivas(usuario.id, db))
+    payload = {"sub": str(usuario.id), "tenant_id": usuario.tenant_id, "role": usuario.role, "perms": perms}
     access  = criar_access_token(payload)
-    refresh, expira = criar_refresh_token(payload)
+    refresh, expira = criar_refresh_token({"sub": str(usuario.id), "tenant_id": usuario.tenant_id, "role": usuario.role})
 
     db.add(RefreshToken(usuario_id=usuario.id, token=refresh, expira_em=expira))
     db.commit()
 
     return TokenResponse(
-        access_token=access,
-        refresh_token=refresh,
-        role=usuario.role,
-        tenant_id=usuario.tenant_id,
-        nome=usuario.nome,
+        access_token=access, refresh_token=refresh,
+        role=usuario.role, tenant_id=usuario.tenant_id, nome=usuario.nome,
+        permissoes=perms,
     )
 
 
@@ -80,16 +81,17 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     if not usuario:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
 
-    # Rotação de refresh token
     db.delete(db_token)
-    new_payload = {"sub": str(usuario.id), "tenant_id": usuario.tenant_id, "role": usuario.role}
+    perms = sorted(permissoes_efetivas(usuario.id, db))
+    new_payload = {"sub": str(usuario.id), "tenant_id": usuario.tenant_id, "role": usuario.role, "perms": perms}
     access = criar_access_token(new_payload)
-    refresh, expira = criar_refresh_token(new_payload)
+    refresh, expira = criar_refresh_token({"sub": str(usuario.id), "tenant_id": usuario.tenant_id, "role": usuario.role})
     db.add(RefreshToken(usuario_id=usuario.id, token=refresh, expira_em=expira))
     db.commit()
 
     return TokenResponse(access_token=access, refresh_token=refresh,
-                         role=usuario.role, tenant_id=usuario.tenant_id, nome=usuario.nome)
+                         role=usuario.role, tenant_id=usuario.tenant_id, nome=usuario.nome,
+                         permissoes=perms)
 
 
 @router.post("/logout")
@@ -100,5 +102,9 @@ def logout(body: RefreshRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=MeResponse)
-def me(usuario: Usuario = Depends(get_usuario_atual)):
-    return usuario
+def me(usuario: Usuario = Depends(get_usuario_atual), db: Session = Depends(get_db)):
+    perms = sorted(permissoes_efetivas(usuario.id, db))
+    return MeResponse(
+        id=usuario.id, nome=usuario.nome, email=usuario.email,
+        role=usuario.role, tenant_id=usuario.tenant_id, permissoes=perms,
+    )

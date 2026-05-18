@@ -7,17 +7,18 @@ import { Plus, Trash2, KeyRound, Check, X, Users } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 const ROLES_POR_NIVEL: Record<string, string[]> = {
-  owner: ["viewer", "operator", "admin", "owner"],
-  admin: ["viewer", "operator", "admin"],
+  owner: ["cofre", "viewer", "operator", "admin", "owner"],
+  admin: ["cofre", "viewer", "operator", "admin"],
 };
 
 interface Usuario { id: number; nome: string; email: string; role: string; ativo: boolean; }
 
 const ROLE_CFG: Record<string, { label: string; cls: string }> = {
-  owner:    { label: "Owner",    cls: "bg-purple-900/50 text-purple-300 border border-purple-800" },
-  admin:    { label: "Admin",    cls: "bg-blue-900/50 text-blue-300 border border-blue-800" },
-  operator: { label: "Operator", cls: "bg-emerald-900/50 text-emerald-300 border border-emerald-800" },
-  viewer:   { label: "Viewer",   cls: "bg-neutral-800 text-neutral-400 border border-neutral-700" },
+  owner:    { label: "Owner",        cls: "bg-purple-900/50 text-purple-300 border border-purple-800" },
+  admin:    { label: "Admin",        cls: "bg-blue-900/50 text-blue-300 border border-blue-800" },
+  operator: { label: "Operator",     cls: "bg-emerald-900/50 text-emerald-300 border border-emerald-800" },
+  viewer:   { label: "Viewer",       cls: "bg-neutral-800 text-neutral-400 border border-neutral-700" },
+  cofre:    { label: "Cofre",        cls: "bg-amber-900/50 text-amber-300 border border-amber-800" },
 };
 
 function Initials({ nome }: { nome: string }) {
@@ -136,7 +137,7 @@ export default function UsuariosPage() {
                   className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
                   {roles.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
-                <p className="text-xs text-neutral-600 mt-1">viewer = leitura · operator = dispara · admin = gerencia</p>
+                <p className="text-xs text-neutral-600 mt-1">cofre = só cofre · viewer = leitura · operator = dispara · admin = gerencia</p>
               </div>
             </div>
             <div className="flex gap-3 mt-5">

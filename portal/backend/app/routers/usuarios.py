@@ -9,7 +9,7 @@ from ..deps import get_usuario_atual, requer_role
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
-ROLES_VALIDAS = {"owner", "admin", "operator", "viewer"}
+ROLES_VALIDAS = {"owner", "admin", "operator", "viewer", "cofre"}
 
 
 class UsuarioCreate(BaseModel):

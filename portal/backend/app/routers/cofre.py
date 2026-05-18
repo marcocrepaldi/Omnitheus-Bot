@@ -6,7 +6,7 @@ from datetime import datetime
 
 from ..database import get_db
 from ..models import CofreSenha, Usuario, CredencialTenant
-from ..deps import requer_role
+from ..deps import requer_role, requer_cofre_ou_role
 from ..vault import criptografar, descriptografar, gerar_senha
 
 router = APIRouter(prefix="/cofre", tags=["cofre"])
@@ -56,7 +56,7 @@ class RotacaoCompletaOut(BaseModel):
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[CofreOut])
-def listar(db: Session = Depends(get_db), u: Usuario = Depends(requer_role("operator"))):
+def listar(db: Session = Depends(get_db), u: Usuario = Depends(requer_cofre_ou_role("operator"))):
     itens = db.query(CofreSenha).filter(CofreSenha.tenant_id == u.tenant_id).order_by(CofreSenha.seguradora_nome).all()
     return [
         CofreOut(
@@ -74,7 +74,7 @@ def listar(db: Session = Depends(get_db), u: Usuario = Depends(requer_role("oper
 
 
 @router.get("/{id}/senha", response_model=CofreComSenhaOut)
-def ver_senha(id: int, db: Session = Depends(get_db), u: Usuario = Depends(requer_role("operator"))):
+def ver_senha(id: int, db: Session = Depends(get_db), u: Usuario = Depends(requer_cofre_ou_role("operator"))):
     """Retorna a senha descriptografada — use com responsabilidade."""
     c = db.query(CofreSenha).filter(CofreSenha.id == id, CofreSenha.tenant_id == u.tenant_id).first()
     if not c:
@@ -93,7 +93,7 @@ def ver_senha(id: int, db: Session = Depends(get_db), u: Usuario = Depends(reque
 
 
 @router.post("/", response_model=CofreOut, status_code=201)
-def salvar(dados: CofreIn, db: Session = Depends(get_db), u: Usuario = Depends(requer_role("operator"))):
+def salvar(dados: CofreIn, db: Session = Depends(get_db), u: Usuario = Depends(requer_cofre_ou_role("operator"))):
     """Cria ou atualiza uma credencial no cofre (merge: preserva senha anterior)."""
     c = db.query(CofreSenha).filter(
         CofreSenha.tenant_id == u.tenant_id,
@@ -130,7 +130,7 @@ def salvar(dados: CofreIn, db: Session = Depends(get_db), u: Usuario = Depends(r
 
 
 @router.post("/{id}/rotacionar", response_model=RotacaoOut)
-def rotacionar(id: int, db: Session = Depends(get_db), u: Usuario = Depends(requer_role("operator"))):
+def rotacionar(id: int, db: Session = Depends(get_db), u: Usuario = Depends(requer_cofre_ou_role("operator"))):
     """
     Gera uma nova senha automaticamente, salva no cofre e retorna a nova senha.
     Use para acionar o fluxo automático: Robô 2 → atualiza cofre → Robô 3.
@@ -176,7 +176,7 @@ def rotacao_completa(
     id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    u: Usuario = Depends(requer_role("operator")),
+    u: Usuario = Depends(requer_cofre_ou_role("operator")),
 ):
     """
     Fluxo completo de rotação de senha:

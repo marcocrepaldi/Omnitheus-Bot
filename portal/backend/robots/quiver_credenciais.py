@@ -25,7 +25,10 @@ if not logger.handlers:
 
 
 def send_email(subject: str, body: str):
-    # Lê sempre em runtime para capturar credenciais injetadas pelo scheduler
+    """
+    Envia e-mail para EMAIL_TO. Suporta múltiplos destinatários separados por
+    vírgula ou ponto-e-vírgula. Ex: "ti@empresa.com, danubia@empresa.com"
+    """
     email_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
     email_port = int(os.getenv("EMAIL_PORT", 587))
     email_user = os.getenv("EMAIL_USER")
@@ -36,18 +39,32 @@ def send_email(subject: str, body: str):
         logger.info(f"[E-MAIL DESATIVADO] {subject} | EMAIL_TO={email_to} EMAIL_USER={email_user}")
         return
 
-    logger.info(f"Enviando e-mail para {email_to} | assunto: {subject}")
+    # Suporta múltiplos destinatários — separados por vírgula ou ponto-e-vírgula
+    destinatarios = [e.strip() for e in email_to.replace(";", ",").split(",") if e.strip()]
+    logger.info(f"Enviando e-mail para {destinatarios} | de {email_user} | assunto: {subject}")
+
     msg = MIMEMultipart()
     msg["From"]    = email_user
-    msg["To"]      = email_to
+    msg["To"]      = ", ".join(destinatarios)
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain", "utf-8"))
-    with smtplib.SMTP(email_host, email_port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(email_user, email_pass)
-        server.send_message(msg)
-    logger.info(f"E-mail enviado com sucesso para {email_to}")
+
+    try:
+        with smtplib.SMTP(email_host, email_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(email_user, email_pass)
+            falhas = server.send_message(msg, to_addrs=destinatarios)
+        if falhas:
+            logger.error(f"E-mail FALHOU para {falhas} — outros enviados OK")
+        else:
+            logger.info(f"E-mail aceito pelo SMTP para todos os destinatários (250 OK)")
+    except smtplib.SMTPRecipientsRefused as e:
+        logger.error(f"E-mail REJEITADO: destinatários recusados — {e.recipients}")
+    except smtplib.SMTPResponseException as e:
+        logger.error(f"E-mail erro SMTP {e.smtp_code}: {e.smtp_error}")
+    except Exception as e:
+        logger.error(f"E-mail erro inesperado: {type(e).__name__}: {e}")
 
 
 def _solve_captcha_sync(captcha_key: str, url: str, sitekey: str) -> str:

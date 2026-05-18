@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Plus, Trash2, CalendarClock, Clock, Check } from "lucide-react";
+import { Plus, Trash2, CalendarClock, Clock, Check, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -36,6 +36,38 @@ function buildCron(f: FormState): string {
   if (sorted.length === 0) return `${m} ${h} * * *`;
   return `${m} ${h} * * ${sorted.join(",")}`;
 }
+
+function cronToForm(expr: string, robo_id: number, ativo: boolean): FormState {
+  /**
+   * Reverso do buildCron — analisa a expressão cron e reconstrói o estado do form.
+   * Casos suportados: "0 * * * *", "M H * * *", "M H * * 1-5", "M H * * 1,3,5", outro → personalizado.
+   */
+  const base: FormState = {
+    robo_id, freq: "personalizado", hora: 8, minuto: 0,
+    dias: [], cron_custom: expr, ativo,
+  };
+  try {
+    const parts = expr.trim().split(/\s+/);
+    if (parts.length !== 5) return base;
+    const [min, hr, dom, mon, dow] = parts;
+
+    if (hr === "*" && min === "0" && dom === "*" && mon === "*" && dow === "*") {
+      return { ...base, freq: "horario" };
+    }
+    if (dom === "*" && mon === "*" && /^\d+$/.test(min) && /^\d+$/.test(hr)) {
+      const minuto = parseInt(min); const hora = parseInt(hr);
+      if (dow === "*")  return { ...base, freq: "diario",  hora, minuto, cron_custom: "" };
+      if (dow === "1-5") return { ...base, freq: "semana",  hora, minuto, cron_custom: "" };
+      // Dias específicos: "1,3,5"
+      if (/^[0-6](,[0-6])*$/.test(dow)) {
+        const dias = dow.split(",").map(n => parseInt(n));
+        return { ...base, freq: "dias", hora, minuto, dias, cron_custom: "" };
+      }
+    }
+  } catch { /* cai no personalizado */ }
+  return base;
+}
+
 
 function cronToHuman(expr: string): string {
   try {
@@ -148,6 +180,7 @@ export default function AgendamentosPage() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [robos, setRobos] = useState<Robo[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm());
 
   const carregar = () => {
@@ -168,12 +201,25 @@ export default function AgendamentosPage() {
     if (!cron_expr || form.robo_id === 0) return;
     if (form.freq === "dias" && form.dias.length === 0) return;
     const { authHeader } = await import("@/lib/auth");
-    await fetch(`${API}/agendamentos/`, {
-      method: "POST",
+    const url    = editando ? `${API}/agendamentos/${editando}` : `${API}/agendamentos/`;
+    const method = editando ? "PUT" : "POST";
+    const r = await fetch(url, {
+      method,
       headers: { ...authHeader(), "Content-Type": "application/json" },
       body: JSON.stringify({ robo_id: form.robo_id, cron_expr, ativo: form.ativo }),
     });
-    setShowForm(false); setForm(defaultForm()); carregar();
+    if (!r.ok) { const e = await r.json(); alert(e.detail || "Erro ao salvar"); return; }
+    setShowForm(false); setEditando(null); setForm(defaultForm()); carregar();
+  };
+
+  const abrirEditar = (ag: Agendamento) => {
+    setEditando(ag.id);
+    setForm(cronToForm(ag.cron_expr, ag.robo_id, ag.ativo));
+    setShowForm(true);
+  };
+
+  const cancelarForm = () => {
+    setShowForm(false); setEditando(null); setForm(defaultForm());
   };
 
   const deletar = async (id: number) => {
@@ -199,7 +245,7 @@ export default function AgendamentosPage() {
             <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Configure quando cada robô executa automaticamente</p>
           </div>
           {!showForm && (
-            <button onClick={() => { setForm(defaultForm()); setShowForm(true); }}
+            <button onClick={() => { setEditando(null); setForm(defaultForm()); setShowForm(true); }}
               className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
               <Plus size={16} /> Novo Agendamento
             </button>
@@ -209,7 +255,9 @@ export default function AgendamentosPage() {
         {/* Formulário */}
         {showForm && (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 mb-6 shadow-sm">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-5">Configurar Agendamento</h3>
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-5">
+              {editando ? "Editar Agendamento" : "Configurar Agendamento"}
+            </h3>
             <div className="space-y-6">
               <div>
                 <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2 block">Robô</label>
@@ -261,9 +309,9 @@ export default function AgendamentosPage() {
               <div className="flex gap-3 pt-1">
                 <button onClick={salvar} disabled={!canSave}
                   className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                  <Check size={15} /> Salvar Agendamento
+                  <Check size={15} /> {editando ? "Salvar alterações" : "Salvar Agendamento"}
                 </button>
-                <button onClick={() => { setShowForm(false); setForm(defaultForm()); }}
+                <button onClick={cancelarForm}
                   className="bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
                   Cancelar
                 </button>
@@ -305,7 +353,11 @@ export default function AgendamentosPage() {
                     </p>
                   )}
                 </div>
-                <div className="border-t border-neutral-100 dark:border-neutral-800 px-4 py-3 flex justify-end">
+                <div className="border-t border-neutral-100 dark:border-neutral-800 px-4 py-3 flex justify-end gap-1">
+                  <button onClick={() => abrirEditar(ag)} title="Editar"
+                    className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                    <Pencil size={14} />
+                  </button>
                   <button onClick={() => deletar(ag.id)} title="Excluir"
                     className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-900/10 rounded-lg transition-colors">
                     <Trash2 size={14} />
