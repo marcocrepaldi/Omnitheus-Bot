@@ -115,6 +115,7 @@ def _parse_csv(content: bytes, tenant_id: int) -> list:
     else:
         text = content.decode("latin-1", errors="replace")
 
+    text   = text.replace("\r\n", "\n").replace("\r", "\n")
     reader = csv.reader(io.StringIO(text), delimiter=";")
     rows   = list(reader)
     if len(rows) < 2:
@@ -272,113 +273,90 @@ async def _login(page, login_url: str, corretor_slug: str, user: str, passwd: st
     logger.info(f"Login OK. Frames: {[f.url for f in page.frames]}")
 
 
-# ── Navegação até Relatórios > Orçamento por situação ─────────────────────────
+# ── Navegação até Vendas > Orçamento por situação ────────────────────────────
 
 async def _navegar_para_relatorio(page) -> bool:
     """
-    3 estratégias em cascata:
-      1) Busca direta por "Orçamento por situação" em todos os frames
-      2) Clica em "Relatórios"/"Vendas" no navSide e depois busca o sub-item
-      3) SelecionaModuloJQuery com nomes prováveis baseados no CSV (RptMultCalculo)
+    Caminho confirmado via investigação:
+      1) menuFast.Aspx → SelecionaModuloJQuery('FrmPortal.aspx?pagina=Orcamentos', ...)
+      2) Frame pagina=Orcamentos → clica link "Orçamento por situação"
+         onclick: SelecionaModuloJQuery('RptMultCalculo;Relatorio',
+                  'RELATORIOS_ORCAMENTO_POR_SITUACAO', ...)
     """
-    # Estratégia 1 — busca direta
+    # Passo 1 — abre o módulo Vendas/Orcamentos no frame menuFast
     for frame in page.frames:
-        try:
-            found = await frame.evaluate(r"""
-                (() => {
-                    var links = document.querySelectorAll('a, li, [onclick]');
-                    for (var i = 0; i < links.length; i++) {
-                        var t = (links[i].innerText || links[i].textContent || '').trim().toLowerCase();
-                        if (t.includes('orçamento por situação') ||
-                            t.includes('orcamento por situacao') ||
-                            t.includes('rptmultcalculo')) {
-                            links[i].click();
-                            return 'direto:' + t;
-                        }
-                    }
-                    return null;
-                })()
-            """)
-            if found:
-                logger.info(f"Estratégia 1: {found} (frame: {frame.url})")
-                return True
-        except Exception:
-            pass
-
-    # Estratégia 2 — expande menu Relatórios e busca sub-item
-    for frame in page.frames:
-        try:
-            clicked_menu = await frame.evaluate(r"""
-                (() => {
-                    var links = document.querySelectorAll('#navSide a, nav a, .menu a');
-                    for (var i = 0; i < links.length; i++) {
-                        var t = (links[i].innerText || links[i].textContent || '').trim().toLowerCase();
-                        if (t.includes('relat') || t.includes('vendas') ||
-                            t.includes('orçamento') || t.includes('orcamento')) {
-                            links[i].click();
-                            return 'menu:' + t;
-                        }
-                    }
-                    return null;
-                })()
-            """)
-            if clicked_menu:
-                logger.info(f"Estratégia 2a: {clicked_menu}")
-                await page.wait_for_timeout(2000)
-                found2 = await frame.evaluate(r"""
-                    (() => {
-                        var links = document.querySelectorAll('a, li');
-                        for (var i = 0; i < links.length; i++) {
-                            var t = (links[i].innerText || links[i].textContent || '').trim().toLowerCase();
-                            if (t.includes('orçamento por') || t.includes('orcamento por') ||
-                                t.includes('mult calculo') || t.includes('situação')) {
-                                links[i].click();
-                                return 'sub:' + t;
-                            }
-                        }
-                        return null;
-                    })()
-                """)
-                if found2:
-                    logger.info(f"Estratégia 2b: {found2}")
-                    return True
-        except Exception:
-            pass
-
-    # Estratégia 3 — SelecionaModuloJQuery com nomes prováveis
-    for frame in page.frames:
-        for page_name in ["RptMultCalculo", "RelatorioMultCalculo", "RptOrcamentoPorSituacao"]:
+        if "menufas" in frame.url.lower():
             try:
-                ok = await frame.evaluate(f"""
-                    (() => {{
-                        if (typeof SelecionaModuloJQuery === 'function') {{
+                await frame.evaluate("""
+                    SelecionaModuloJQuery(
+                        'FrmPortal.aspx?pagina=Orcamentos',
+                        'ORCAMENTOS', 'AcompanhamentoVendas|Professional',
+                        'ORCAMENTOS', 'Vendas'
+                    );
+                """)
+                logger.info("Passo 1: SelecionaModuloJQuery(Orcamentos) chamado")
+                break
+            except Exception as e:
+                logger.warning(f"Passo 1 falhou ({frame.url}): {e}")
+
+    await page.wait_for_timeout(4000)
+    logger.info(f"Frames após Vendas: {[f.url[:70] for f in page.frames]}")
+
+    # Passo 2 — dentro do frame pagina=Orcamentos, clica "Orçamento por situação"
+    for tentativa in range(8):
+        for frame in page.frames:
+            if "orcamentos" in frame.url.lower():
+                try:
+                    links = await frame.query_selector_all("a")
+                    for link in links:
+                        txt = (await link.inner_text()).strip().lower()
+                        if "orçamento por situação" in txt or "orcamento por situacao" in txt:
+                            await link.click()
+                            logger.info(f"Passo 2: clicou 'Orçamento por situação' (frame: {frame.url[:60]})")
+                            await page.wait_for_timeout(5000)
+                            logger.info(f"Frames após clique: {[f.url[:70] for f in page.frames]}")
+                            return True
+                except Exception as e:
+                    logger.debug(f"Passo 2 tentativa {tentativa} frame {frame.url[:40]}: {e}")
+        await page.wait_for_timeout(1000)
+
+    # Fallback — tenta a chamada JS direta no frame de conteúdo
+    for frame in page.frames:
+        if "orcamentos" in frame.url.lower():
+            try:
+                ok = await frame.evaluate("""
+                    (() => {
+                        if (typeof SelecionaModuloJQuery === 'function') {
                             SelecionaModuloJQuery(
-                                'Fast/FrmAjaxBootstrap.aspx?pagina={page_name}',
-                                '{page_name}', 'Professional',
-                                '{page_name}', 'Orçamento por Situação'
+                                'RptMultCalculo;Relatorio',
+                                'RELATORIOS_ORCAMENTO_POR_SITUACAO',
+                                'AcompanhamentoVendas|Professional',
+                                'RELATORIOS_ORCAMENTO_POR_SITUACAO',
+                                'Orçamento por situação'
                             );
                             return true;
-                        }}
+                        }
                         return false;
-                    }})()
+                    })()
                 """)
                 if ok:
-                    logger.info(f"Estratégia 3: SelecionaModuloJQuery({page_name})")
-                    await page.wait_for_timeout(3000)
+                    logger.info("Fallback: SelecionaModuloJQuery(RptMultCalculo;Relatorio) chamado")
+                    await page.wait_for_timeout(5000)
                     return True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Fallback JS falhou: {e}")
 
-    # Diagnóstico — loga o que está disponível no navSide para facilitar investigação
+    # Diagnóstico — loga os links disponíveis nos frames de conteúdo
     for frame in page.frames:
         try:
-            items = await frame.evaluate("""
-                Array.from(document.querySelectorAll('#navSide a, nav a')).map(a =>
-                    (a.innerText || a.textContent || '').trim()
-                ).filter(Boolean)
+            links = await frame.evaluate("""
+                Array.from(document.querySelectorAll('a')).map(a => ({
+                    text: (a.innerText||'').trim().substring(0,50),
+                    onclick: (a.getAttribute('onclick')||'').substring(0,80)
+                })).filter(x => x.text).slice(0, 30)
             """)
-            if items:
-                logger.warning(f"navSide (frame {frame.url}): {items}")
+            if links:
+                logger.warning(f"Links frame {frame.url[:60]}: {links}")
         except Exception:
             pass
 
@@ -388,199 +366,462 @@ async def _navegar_para_relatorio(page) -> bool:
 # ── Preenchimento dos filtros ─────────────────────────────────────────────────
 
 async def _preencher_filtros(page, divisao: str, data_str: str):
-    """Seleciona Nível=CORRETORA, Divisão e define datas De/Até = data_str."""
+    """
+    Preenche Nível, Divisão e datas De/Até em qualquer frame.
+    Detecta inputs de data pelo valor já preenchido (formato DD/MM/YYYY) —
+    estratégia robusta que independe de id/name/label/URL do frame.
+    """
     await page.wait_for_timeout(3000)
-    divisao_upper = divisao.upper()[:25]  # parcial para match robusto
+    divisao_upper = divisao.upper()[:25]
 
     for frame in page.frames:
         try:
-            tem_form = await frame.evaluate(
-                "!!(document.querySelector('select') || document.querySelector('input[type=\"text\"]'))"
-            )
-            if not tem_form:
-                continue
-
-            logger.info(f"Preenchendo filtros no frame: {frame.url}")
-
-            # Seleciona Nível = CORRETORA
-            await frame.evaluate(r"""
-                (() => {
-                    document.querySelectorAll('select').forEach(function(sel) {
-                        var ctx = (sel.id + sel.name + (sel.previousElementSibling
-                            ? (sel.previousElementSibling.innerText || '') : '')).toLowerCase();
-                        if (ctx.includes('nivel') || ctx.includes('nível')) {
-                            for (var i = 0; i < sel.options.length; i++) {
-                                if (sel.options[i].text.toUpperCase().includes('CORRETORA')) {
-                                    sel.selectedIndex = i;
-                                    sel.dispatchEvent(new Event('change', {bubbles: true}));
-                                    if (typeof angular !== 'undefined') {
-                                        try { angular.element(sel).scope().$apply(); } catch(e) {}
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    });
-                })()
-            """)
-
-            await page.wait_for_timeout(2000)
-
-            # Seleciona Divisão
-            await frame.evaluate(f"""
+            resultado = await frame.evaluate(f"""
                 (() => {{
+                    var r = {{nivel: null, divisao: null, deSet: false, ateSet: false, dateCount: 0}};
+
+                    // Nível
                     document.querySelectorAll('select').forEach(function(sel) {{
-                        var ctx = (sel.id + sel.name + (sel.previousElementSibling
-                            ? (sel.previousElementSibling.innerText || '') : '')).toLowerCase();
-                        if (ctx.includes('divis') || ctx.includes('corretora')) {{
-                            for (var i = 0; i < sel.options.length; i++) {{
-                                if (sel.options[i].text.toUpperCase().includes('{divisao_upper}')) {{
+                        if (r.nivel) return;
+                        var ctx = (sel.id + (sel.name||'') +
+                            (sel.parentElement ? sel.parentElement.innerText : '')).toLowerCase();
+                        if (ctx.includes('nivel') || ctx.includes('n\\u00edvel')) {{
+                            for (var i=0; i<sel.options.length; i++) {{
+                                if (sel.options[i].text.toUpperCase().includes('CORRETORA')) {{
                                     sel.selectedIndex = i;
-                                    sel.dispatchEvent(new Event('change', {{bubbles: true}}));
-                                    if (typeof angular !== 'undefined') {{
-                                        try {{ angular.element(sel).scope().$apply(); }} catch(e) {{}}
-                                    }}
-                                    break;
+                                    sel.dispatchEvent(new Event('change', {{bubbles:true}}));
+                                    r.nivel = sel.options[i].text; break;
                                 }}
                             }}
                         }}
                     }});
-                }})()
-            """)
 
-            await page.wait_for_timeout(1000)
-
-            # Preenche datas De e Até
-            await frame.evaluate(f"""
-                (() => {{
-                    var inputs = document.querySelectorAll('input[type="text"], input[type="date"]');
-                    var deSet = false, ateSet = false;
-                    inputs.forEach(function(inp) {{
-                        var ctx = (inp.id + inp.name + (inp.placeholder || '') +
-                            (inp.previousElementSibling ? (inp.previousElementSibling.innerText || '') : '')
-                        ).toLowerCase();
-                        var lbl = '';
-                        var parent = inp.closest('div, td, tr, li');
-                        if (parent) {{
-                            parent.querySelectorAll('label, span').forEach(function(l) {{
-                                lbl += (l.innerText || '').toLowerCase() + ' ';
-                            }});
-                        }}
-                        ctx += lbl;
-
-                        var isDe = !deSet && (
-                            ctx.includes('de:') || ctx.includes('datade') || ctx.includes('dt_de') ||
-                            ctx.includes('inicio') || ctx.includes('período de') ||
-                            (ctx.includes(' de ') && !ctx.includes('até'))
-                        );
-                        var isAte = !ateSet && !isDe && (
-                            ctx.includes('até') || ctx.includes('ate') ||
-                            ctx.includes('dataate') || ctx.includes('dt_ate') || ctx.includes('fim')
-                        );
-
-                        if (isDe) {{
-                            inp.value = '{data_str}';
-                            inp.dispatchEvent(new Event('input', {{bubbles: true}}));
-                            inp.dispatchEvent(new Event('change', {{bubbles: true}}));
-                            if (typeof angular !== 'undefined') {{
-                                try {{ angular.element(inp).triggerHandler('change'); }} catch(e) {{}}
+                    // Divisão
+                    document.querySelectorAll('select').forEach(function(sel) {{
+                        if (r.divisao) return;
+                        var ctx = (sel.id + (sel.name||'') +
+                            (sel.parentElement ? sel.parentElement.innerText : '')).toLowerCase();
+                        if (ctx.includes('divis') || ctx.includes('corretora')) {{
+                            for (var i=0; i<sel.options.length; i++) {{
+                                if (sel.options[i].text.toUpperCase().includes('{divisao_upper}')) {{
+                                    sel.selectedIndex = i;
+                                    sel.dispatchEvent(new Event('change', {{bubbles:true}}));
+                                    r.divisao = sel.options[i].text; break;
+                                }}
                             }}
-                            deSet = true;
-                        }} else if (isAte) {{
-                            inp.value = '{data_str}';
-                            inp.dispatchEvent(new Event('input', {{bubbles: true}}));
-                            inp.dispatchEvent(new Event('change', {{bubbles: true}}));
-                            if (typeof angular !== 'undefined') {{
-                                try {{ angular.element(inp).triggerHandler('change'); }} catch(e) {{}}
-                            }}
-                            ateSet = true;
                         }}
                     }});
-                    return {{deSet: deSet, ateSet: ateSet}};
+
+                    // Datas — detecta pelo valor atual no formato DD/MM/YYYY
+                    var dateRe = /^\\d{{2}}\\/\\d{{2}}\\/\\d{{4}}$/;
+                    var dateInputs = Array.from(
+                        document.querySelectorAll('input[type=text], input[type=date], input:not([type])')
+                    ).filter(function(inp) {{ return dateRe.test((inp.value||'').trim()); }});
+
+                    r.dateCount = dateInputs.length;
+
+                    function setDate(inp, val) {{
+                        inp.value = val;
+                        inp.dispatchEvent(new Event('input',  {{bubbles:true}}));
+                        inp.dispatchEvent(new Event('change', {{bubbles:true}}));
+                        try {{ if (typeof angular!=='undefined') angular.element(inp).triggerHandler('change'); }} catch(e){{}}
+                    }}
+
+                    if (dateInputs.length >= 2) {{
+                        setDate(dateInputs[0], '{data_str}');
+                        setDate(dateInputs[dateInputs.length-1], '{data_str}');
+                        r.deSet = r.ateSet = true;
+                    }} else if (dateInputs.length === 1) {{
+                        setDate(dateInputs[0], '{data_str}');
+                        r.deSet = true;
+                    }}
+
+                    return r;
                 }})()
             """)
 
-            logger.info(f"Filtros: data={data_str} divisao={divisao}")
-            return
+            if resultado and resultado.get("dateCount", 0) > 0:
+                logger.info(f"Filtros OK [{frame.url[:55]}]: {resultado}")
+                return
 
         except Exception as fe:
-            logger.debug(f"Filtros frame {frame.url}: {fe}")
+            logger.debug(f"Filtros frame {frame.url[:40]}: {fe}")
+
+    logger.warning("Nenhum frame com inputs de data encontrado — datas padrão do formulário serão usadas")
 
 
-# ── Executa e baixa o CSV ─────────────────────────────────────────────────────
+# ── Parsing de arquivo (CSV ou XLSX) ─────────────────────────────────────────
+
+def _parse_file(content: bytes, tenant_id: int) -> list:
+    """Detecta formato (CSV / XLSX / XLS) e delega ao parser correto."""
+    if content[:2] == b'PK':
+        return _parse_xlsx(content, tenant_id)
+    if content[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+        return _parse_xlsx(content, tenant_id)
+    return _parse_csv(content, tenant_id)
+
+
+def _parse_xlsx(content: bytes, tenant_id: int) -> list:
+    import openpyxl, io as _io
+    wb = openpyxl.load_workbook(_io.BytesIO(content), data_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if len(rows) < 2:
+        return []
+
+    header = [str(h).strip() if h is not None else "" for h in rows[0]]
+    col_idx = {h: i for i, h in enumerate(header)}
+    core_idx = {col_idx[h] for h in HEADER_MAP if h in col_idx}
+
+    records = []
+    for row in rows[1:]:
+        if not row or not any(c for c in row if c is not None):
+            continue
+        rec = {"tenant_id": tenant_id}
+        for csv_h, field in HEADER_MAP.items():
+            idx = col_idx.get(csv_h)
+            if idx is None:
+                continue
+            raw = row[idx]
+            if raw is None:
+                rec[field] = None
+                continue
+            raw_s = str(raw).strip()
+            if field in _NUMERIC:
+                rec[field] = _parse_float(raw_s) if raw_s else None
+            elif field in _DATE:
+                from datetime import date as _date
+                if isinstance(raw, _date):
+                    rec[field] = raw
+                else:
+                    rec[field] = _parse_date(raw_s)
+            elif field in _DTIME:
+                from datetime import datetime as _dt
+                if isinstance(raw, _dt):
+                    rec[field] = raw
+                else:
+                    rec[field] = _parse_datetime(raw_s)
+            else:
+                rec[field] = raw_s or None
+        extras = {
+            header[i]: str(row[i]).strip()
+            for i in range(len(row))
+            if i not in core_idx and i < len(header) and header[i] and row[i] is not None
+        }
+        rec["dados_seguradoras"] = extras or None
+        if not (rec.get("calculo") or "").strip():
+            continue
+        if rec.get("seguradora") is None:
+            rec["seguradora"] = ""
+        records.append(rec)
+
+    logger.info(f"XLSX parseado: {len(records)} registros")
+    return records
+
+
+# ── HTTP direto (fallback quando o browser não captura o download) ────────────
+
+async def _direct_http_post(page, form_frame, nome_evento: str = "XLS2") -> bytes:
+    """Reproduz o POST do eventoAjax via Python urllib usando os cookies do Playwright."""
+    import urllib.request, urllib.parse, ssl
+
+    frame_url = form_frame.url
+
+    cookies_list = await page.context.cookies()
+    cookie_header = "; ".join(f"{c['name']}={c['value']}" for c in cookies_list)
+    logger.info(f"Direct POST: {len(cookies_list)} cookies, frame={frame_url[:80]}")
+
+    form_data = await form_frame.evaluate("""
+        (() => {
+            var data = {};
+            document.querySelectorAll('input[name], select[name], textarea[name]').forEach(function(el) {
+                if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+                data[el.name] = el.value !== undefined ? el.value : '';
+            });
+            return data;
+        })()
+    """)
+    form_data['NomeEvento'] = nome_evento
+    logger.info(f"Direct POST: {len(form_data)} campos, NomeEvento={nome_evento}")
+
+    encoded = urllib.parse.urlencode(form_data).encode('utf-8')
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    req = urllib.request.Request(
+        frame_url, data=encoded,
+        headers={
+            'Cookie': cookie_header,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': '*/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Origin': 'https://harper.corretor-online.com.br',
+            'Referer': frame_url,
+        }
+    )
+
+    loop = asyncio.get_event_loop()
+
+    def _do():
+        with urllib.request.urlopen(req, context=ctx, timeout=120) as resp:
+            data = resp.read()
+            ct = resp.headers.get('Content-Type', '')
+            cd = resp.headers.get('Content-Disposition', '')
+            logger.info(f"Direct POST resp: {resp.status} ct={ct!r} cd={cd!r} size={len(data)}")
+            preview = data[:3000].decode('latin-1', errors='replace')
+            logger.info(f"Direct POST body: {preview!r}")
+            return data
+
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        content = await loop.run_in_executor(pool, _do)
+
+    return content
+
+
+async def _direct_http_get(page, url: str) -> bytes:
+    """Faz GET direto para uma URL usando os cookies do Playwright."""
+    import urllib.request, ssl
+
+    cookies_list = await page.context.cookies()
+    cookie_header = "; ".join(f"{c['name']}={c['value']}" for c in cookies_list)
+    logger.info(f"Direct GET: {url}")
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    # Garante URL absoluta
+    if url.startswith('/'):
+        url = 'https://harper.corretor-online.com.br' + url
+
+    req = urllib.request.Request(
+        url,
+        headers={
+            'Cookie': cookie_header,
+            'Accept': '*/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://harper.corretor-online.com.br/',
+        }
+    )
+
+    loop = asyncio.get_event_loop()
+
+    def _do():
+        with urllib.request.urlopen(req, context=ctx, timeout=120) as resp:
+            data = resp.read()
+            ct = resp.headers.get('Content-Type', '')
+            logger.info(f"Direct GET resp: {resp.status} ct={ct!r} size={len(data)}")
+            preview = data[:1000].decode('latin-1', errors='replace')
+            logger.info(f"Direct GET body: {preview!r}")
+            return data
+
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        return await loop.run_in_executor(pool, _do)
+
+
+# ── Executa e baixa o relatório ───────────────────────────────────────────────
 
 async def _executar_e_baixar(page) -> bytes:
-    # Clica no botão Executar/Gerar
+    """
+    Três abordagens em sequência:
+      A) page.expect_download() com 'Gera XLSX' (eventoAjaxProcessReport)
+      B) page.expect_download() com 'btxls' + captura de resposta text/plain
+      C) HTTP POST direto via Python urllib (usando cookies do Playwright)
+    """
+    # ── encontra o frame do formulário de resultados (FrmConsultaFast) ──────────
+    # Critério principal: presença do botão btxls OU do link eventoAjaxProcessReport
+    # Isso garante que não confundimos com menuFast.Aspx (que tem outros eventoAjax)
+    form_frame = None
     for frame in page.frames:
+        if "FrmConsultaFast" not in frame.url and "frmconsultafast" not in frame.url.lower():
+            continue
         try:
-            clicou = await frame.evaluate(r"""
+            info = await frame.evaluate("""
                 (() => {
-                    var btns = document.querySelectorAll(
-                        'button, input[type="button"], input[type="submit"], a.btn, [onclick]'
-                    );
-                    for (var i = 0; i < btns.length; i++) {
-                        var t = (btns[i].innerText || btns[i].value || btns[i].textContent || '')
-                            .trim().toLowerCase();
-                        if (t.includes('executar') || t.includes('gerar') ||
-                            t.includes('pesquisar') || t.includes('filtrar') ||
-                            t.includes('buscar') || t === 'ok') {
-                            btns[i].click();
-                            return 'exec:' + t;
+                    var hasFlat       = !!document.getElementById('flat');
+                    var hasBtxls      = !!document.getElementById('btxls');
+                    var hasProcessRpt = !!document.querySelector('[onclick*="eventoAjaxProcessReport"]');
+                    var allOnclicks   = Array.from(document.querySelectorAll('[onclick]')).map(el => ({
+                        tag: el.tagName, id: el.id,
+                        t: (el.innerText||el.value||'').trim().substring(0,30),
+                        oc: (el.getAttribute('onclick')||'').substring(0,80)
+                    }));
+                    return {hasFlat, hasBtxls, hasProcessRpt, allOnclicks};
+                })()
+            """)
+            if info and (info.get('hasFlat') or info.get('hasBtxls') or info.get('hasProcessRpt')):
+                form_frame = frame
+                logger.info(f"Frame consulta: {frame.url[:80]}")
+                logger.info(f"hasFlat={info['hasFlat']} hasBtxls={info['hasBtxls']} hasProcessRpt={info['hasProcessRpt']}")
+                logger.info(f"allOnclicks ({len(info['allOnclicks'])}): {info['allOnclicks']}")
+                break
+        except Exception as fe:
+            logger.debug(f"Frame {frame.url[:40]}: {fe}")
+
+    if not form_frame:
+        for frame in page.frames:
+            try:
+                ocs = await frame.evaluate("""
+                    Array.from(document.querySelectorAll('[onclick]')).map(el => ({
+                        tag: el.tagName, id: el.id,
+                        t: (el.innerText||el.value||'').trim().substring(0,30),
+                        oc: (el.getAttribute('onclick')||'').substring(0,80)
+                    })).filter(x => x.oc)
+                """)
+                if ocs:
+                    logger.warning(f"Frame sem EXECUTA [{frame.url[:60]}]: {ocs[:15]}")
+            except Exception:
+                pass
+        raise RuntimeError("Frame com formulário (#flat / btxls / eventoAjax) não encontrado.")
+
+    # ── Clica EXECUTAR para gerar o relatório com os filtros atuais ──────────
+    exec_res = await form_frame.evaluate("""
+        (() => {
+            // Procura botão EXECUTAR (tipo submit ou texto "EXECUTAR")
+            var btns = document.querySelectorAll('button, input[type=button], input[type=submit], a');
+            for (var i=0; i<btns.length; i++) {
+                var t = (btns[i].innerText||btns[i].value||'').trim().toUpperCase();
+                if (t === 'EXECUTAR' || t === 'PESQUISAR' || t === 'GERAR') {
+                    btns[i].click();
+                    return 'clicou:' + btns[i].id + ':' + t;
+                }
+            }
+            // Verifica se já existe #flat (submit padrão Quiver)
+            var flat = document.getElementById('flat');
+            if (flat) { flat.click(); return 'flat:' + (flat.innerText||'').trim(); }
+            return 'sem-executar';
+        })()
+    """)
+    logger.info(f"EXECUTAR: {exec_res}")
+    if exec_res != 'sem-executar':
+        await page.wait_for_load_state("networkidle", timeout=60000)
+        await page.wait_for_timeout(5000)
+
+    # ── Abordagem A: page.expect_download() com "Gera XLSX" ──────────────────
+    # eventoAjaxProcessReport faz um submit de formulário normal → Playwright captura
+    logger.info("Abordagem A: expect_download() com 'Gera XLSX' (eventoAjaxProcessReport)...")
+    try:
+        async with page.expect_download(timeout=60000) as dl_info:
+            clicked_a = await form_frame.evaluate("""
+                (() => {
+                    var els = document.querySelectorAll('a, button');
+                    for (var el of els) {
+                        var oc = el.getAttribute('onclick') || '';
+                        var txt = (el.innerText || el.value || '').trim();
+                        // eventoAjaxProcessReport('XLSX', ...) → file download real
+                        if (oc.indexOf('eventoAjaxProcessReport') !== -1 &&
+                            (oc.indexOf("'XLSX'") !== -1 || oc.indexOf('"XLSX"') !== -1)) {
+                            el.click();
+                            return 'ProcessReport:XLSX ' + txt;
                         }
                     }
                     return null;
                 })()
             """)
-            if clicou:
-                logger.info(f"Executar: {clicou} (frame: {frame.url})")
-                break
-        except Exception:
-            pass
+            logger.info(f"Abordagem A clicou: {clicked_a}")
+            if not clicked_a:
+                raise RuntimeError("Botão Gera XLSX não encontrado")
+        download = await dl_info.value
+        logger.info(f"Abordagem A OK: {download.suggested_filename}")
+        path = await download.path()
+        with open(path, 'rb') as f:
+            return f.read()
+    except Exception as ea:
+        logger.warning(f"Abordagem A falhou: {ea}")
 
-    await page.wait_for_load_state("networkidle", timeout=60000)
-    await page.wait_for_timeout(5000)
+    # ── Abordagem B: response interception com log completo do body ───────────
+    # Captura TODAS as respostas com body completo para diagnóstico
+    logger.info("Abordagem B: response interception (log completo) + btxls...")
+    captured_b: list = []
+    all_resp_b: list = []
 
-    # Baixa o CSV via expect_download
-    for frame in page.frames:
+    async def _on_resp_b(resp):
+        url = resp.url
+        if "corretor-online" not in url and "quiver" not in url:
+            return
+        ct = resp.headers.get("content-type", "").lower()
+        cd = resp.headers.get("content-disposition", "").lower()
+        st = resp.status
         try:
-            async with page.expect_download(timeout=30000) as dl_info:
-                clicked = await frame.evaluate(r"""
-                    (() => {
-                        var btns = document.querySelectorAll('button, a, input, [onclick]');
-                        for (var i = 0; i < btns.length; i++) {
-                            var t = (btns[i].innerText || btns[i].value || btns[i].textContent || '')
-                                .trim().toLowerCase();
-                            var id   = (btns[i].id || '').toLowerCase();
-                            var href = (btns[i].href || '').toLowerCase();
-                            if (t.includes('csv') || t.includes('excel') ||
-                                t.includes('exportar') || t.includes('baixar') ||
-                                t.includes('download') ||
-                                id.includes('csv') || id.includes('export') ||
-                                href.includes('.csv') || href.includes('export')) {
-                                btns[i].click();
-                                return 'dl:' + t;
-                            }
-                        }
-                        return null;
-                    })()
-                """)
-                if not clicked:
-                    raise Exception("botão de download não encontrado")
+            data = await resp.body()
+            size = len(data)
+            preview = data[:5000].decode("latin-1", errors="replace")
+            logger.info(f"[B] Response {st}: {url[:100]}")
+            logger.info(f"  ct={ct!r} cd={cd!r} size={size}")
+            # Log completo para diagnóstico (até 8000 chars)
+            for i in range(0, min(len(preview), 8000), 1000):
+                logger.info(f"  body[{i}:{i+1000}]: {preview[i:i+1000]!r}")
+            all_resp_b.append({"url": url[:100], "ct": ct, "cd": cd, "st": st, "size": size})
 
-            download = await dl_info.value
-            path = await download.path()
-            with open(path, "rb") as fh:
-                content = fh.read()
-            logger.info(f"Download OK: {len(content)} bytes (frame: {frame.url})")
-            return content
+            # CSV: contém ';' como delimitador logo no início
+            if b';' in data[:300]:
+                logger.info(f"  → CSV detectado!")
+                captured_b.append(data)
+                return
 
-        except Exception as fe:
-            logger.debug(f"Download frame {frame.url}: {fe}")
+            # XLSX/XLS binário
+            if data[:2] == b'PK' or data[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+                logger.info(f"  → XLSX/XLS binário detectado!")
+                captured_b.append(data)
+                return
 
-    raise RuntimeError(
-        "Não foi possível baixar o relatório. "
-        "Verifique os logs para identificar o botão de download correto."
-    )
+            # Procura URL de download embutida no body (Quiver às vezes retorna URL)
+            import re as _re
+            urls = _re.findall(r'["\']([^"\']{5,200}\.(?:csv|xls|xlsx)(?:\?[^"\']*)?)["\']', preview, _re.I)
+            urls += _re.findall(r'href=["\']([^"\']+)["\']', preview)
+            file_urls = [u for u in urls if any(x in u.lower() for x in ['download', '.csv', '.xls', '.xlsx', 'getfile', 'export'])]
+            if file_urls:
+                logger.info(f"  → URL de download encontrada: {file_urls}")
+                captured_b.append(("url", file_urls[0]))
+        except Exception as ex:
+            logger.warning(f"Erro ao ler resp {url[:60]}: {ex}")
+
+    page.on("response", _on_resp_b)
+    try:
+        clicked_b = await form_frame.evaluate("""
+            (() => {
+                var btn = document.getElementById('btxls');
+                if (btn) { btn.click(); return 'btxls:' + (btn.innerText||'').trim(); }
+                var ocs = document.querySelectorAll('[onclick]');
+                for (var i=0; i<ocs.length; i++) {
+                    var oc = ocs[i].getAttribute('onclick') || '';
+                    if (oc.indexOf('XLS2') !== -1 || oc.indexOf('XLSX2') !== -1) {
+                        ocs[i].click();
+                        return 'xls2:' + oc.substring(0,40);
+                    }
+                }
+                return null;
+            })()
+        """)
+        logger.info(f"Abordagem B clicou: {clicked_b}")
+        await asyncio.sleep(20)
+    finally:
+        page.remove_listener("response", _on_resp_b)
+
+    logger.info(f"Abordagem B respostas: {all_resp_b}")
+    if captured_b:
+        item = captured_b[0]
+        if isinstance(item, tuple) and item[0] == "url":
+            logger.info(f"Abordagem B: seguindo URL de download {item[1]}")
+            return await _direct_http_get(page, item[1])
+        return item
+
+    # ── Abordagem C: HTTP POST direto com Python urllib ───────────────────────
+    logger.info("Abordagem C: HTTP POST direto via Python urllib...")
+    content_c = await _direct_http_post(page, form_frame, "XLS2")
+
+    # Se o body do POST direto também não é CSV/XLSX, loga e levanta erro
+    if b';' not in content_c[:300] and content_c[:2] != b'PK':
+        logger.error(f"Abordagem C: body não é CSV/XLSX. Primeiros 500 bytes: {content_c[:500]!r}")
+        raise RuntimeError(
+            "Todas as abordagens de download falharam. "
+            "Verifique os logs para o conteúdo real das respostas do Quiver."
+        )
+
+    return content_c
 
 
 # ── Ponto de entrada ──────────────────────────────────────────────────────────
@@ -633,8 +874,8 @@ async def executar() -> dict:
             await page.wait_for_timeout(3000)
 
             await _preencher_filtros(page, divisao, data_str)
-            csv_bytes = await _executar_e_baixar(page)
-            records   = _parse_csv(csv_bytes, tenant_id)
+            file_bytes = await _executar_e_baixar(page)
+            records    = _parse_file(file_bytes, tenant_id)
 
             if not records:
                 return {

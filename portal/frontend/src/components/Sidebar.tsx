@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Bot, CalendarClock, ScrollText, Users, LogOut, Building2,
-  KeyRound, ShieldCheck, Lock, Tag, Shield, Activity, ChevronDown,
+  KeyRound, ShieldCheck, Lock, Tag, Shield, Activity, ChevronDown, BarChart2,
 } from "lucide-react";
 import { getUser, logout, limparSessao } from "@/lib/auth";
 import { temPermissao } from "@/lib/permissions";
@@ -25,6 +25,7 @@ const links: NavLink[] = [
   { href: "/cofre",       label: "Cofre",         icon: Lock,            perm: "cofre:view@*" },
   { href: "/agendamentos",label: "Agendamentos",  icon: CalendarClock,   perm: "agendamentos:view" },
   { href: "/logs",        label: "Logs",          icon: ScrollText,      perm: "logs:view" },
+  { href: "/relatorio-vendas", label: "Rel. Vendas",  icon: BarChart2,       roleMin: "viewer" },
 
   { href: "/categorias",  label: "Categorias",    icon: Tag,             perm: "categorias:manage", grupo: "admin" },
   { href: "/roles",       label: "Perfis",        icon: Shield,          perm: "roles:manage",      grupo: "admin" },
