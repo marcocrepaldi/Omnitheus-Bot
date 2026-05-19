@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, Text, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -216,6 +216,49 @@ class AuditLog(Base):
     ip            = Column(String(45),  nullable=True)
     user_agent    = Column(Text,        nullable=True)
     criado_em     = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class RelatorioVendas(Base):
+    """Relatório Orçamento por Situação importado do Quiver (Robô 4)."""
+    __tablename__ = "relatorio_vendas"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "calculo", "seguradora", name="uq_rv_calculo_seg"),
+    )
+
+    id                 = Column(Integer, primary_key=True, index=True)
+    tenant_id          = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+
+    nivel              = Column(String(50))
+    inicio_vigencia    = Column(Date, nullable=True)
+    divisao            = Column(String(200))
+    cliente            = Column(String(200))
+    cpf_cnpj           = Column(String(30))
+    calculo            = Column(String(20), nullable=False)
+    email_cliente      = Column(String(200))
+    item               = Column(String(500))
+    situacao           = Column(String(50))
+    grupo_producao     = Column(String(200))
+    ramo               = Column(String(100))
+    tipo_orcamento     = Column(String(100))
+    seguradora         = Column(String(100), nullable=False, default="")
+    premio_fechado     = Column(Float, nullable=True)
+    comissao_fechado   = Column(Float, nullable=True)
+    pct_comissao       = Column(Float, nullable=True)
+    premio_liquido     = Column(Float, nullable=True)
+    data_transmissao   = Column(Date, nullable=True)
+    data_efetivacao    = Column(Date, nullable=True)
+    tipo_cotacao       = Column(String(100))
+    tipo_pessoa        = Column(String(20))
+    usuario            = Column(String(200))
+    corretora          = Column(String(200))
+    produtor_interno   = Column(String(500))
+    usuario_efetivacao = Column(String(200))
+    proposta_cia       = Column(String(50))
+    status_painel      = Column(String(50))
+    tipo_uso           = Column(String(100))
+    data_hora_inclusao = Column(DateTime, nullable=True)
+    dados_seguradoras  = Column(JSON, nullable=True)
+    importado_em       = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Execucao(Base):

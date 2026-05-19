@@ -8,6 +8,7 @@ from . import models
 from .routers import (
     robos, execucoes, agendamentos, auth, usuarios, admin, credenciais,
     cofre, cofre_itens, categorias, roles_admin, teams, audit, tenants,
+    relatorio_vendas,
 )
 from .scheduler import iniciar_scheduler, scheduler
 
@@ -111,6 +112,7 @@ app.include_router(roles_admin.router)
 app.include_router(teams.router)
 app.include_router(audit.router)
 app.include_router(tenants.router)
+app.include_router(relatorio_vendas.router)
 
 
 @app.get("/health")

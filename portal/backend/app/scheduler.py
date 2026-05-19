@@ -15,6 +15,7 @@ ROBOT_MAP = {
     1: "robots.quiver_credenciais",
     2: "robots.suhai_troca_senha",
     3: "robots.quiver_atualiza_senha",
+    4: "robots.quiver_relatorio_vendas",
 }
 
 
@@ -42,9 +43,11 @@ async def executar_robo(robo_id: int, tenant_id: int = 1):
         f"| credenciais: {list(credenciais_tenant.keys()) or 'env padrão'}"
     )
 
-    # Injeta credenciais do tenant temporariamente no ambiente
+    # Injeta credenciais do tenant temporariamente no ambiente (inclui TENANT_ID)
+    env_to_inject = dict(credenciais_tenant)
+    env_to_inject["TENANT_ID"] = str(tenant_id)
     env_backup = {}
-    for chave, valor in credenciais_tenant.items():
+    for chave, valor in env_to_inject.items():
         env_backup[chave] = os.environ.get(chave)
         os.environ[chave] = str(valor)
 
@@ -84,7 +87,6 @@ async def executar_robo(robo_id: int, tenant_id: int = 1):
         logger.error(f"Erro ao executar robô {robo_id}: {exc}", exc_info=True)
     finally:
         db.close()
-        # Restaura variáveis de ambiente originais
         for chave, valor_original in env_backup.items():
             if valor_original is None:
                 os.environ.pop(chave, None)
