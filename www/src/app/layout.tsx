@@ -32,14 +32,14 @@ export const metadata: Metadata = {
   authors: [{ name: "Grupo Omnitheus" }],
   creator: "Grupo Omnitheus",
   publisher: "Grupo Omnitheus",
-  metadataBase: new URL("https://bot.omnitheus.com.br"),
+  metadataBase: new URL("https://brokeron.com.br"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://bot.omnitheus.com.br",
+    url: "https://brokeron.com.br",
     title: "BrokerOn | Automação para Corretoras de Seguros",
     description: "Simplifique a gestão da sua corretora no Quiver com o BrokerOn. Automação de credenciais, cofre de senhas e conciliação de comissões.",
     siteName: "BrokerOn",

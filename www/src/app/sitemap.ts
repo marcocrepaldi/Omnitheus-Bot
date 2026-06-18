@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://bot.omnitheus.com.br";
+  const baseUrl = "https://brokeron.com.br";
   
   const routes = [
     "",
