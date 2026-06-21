@@ -1,187 +1,54 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, ChevronDown, Bot, Shield, FileSpreadsheet, Percent, Activity, QrCode } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
+import { useState } from "react";
+
+const whatsapp =
+  "https://wa.me/5511978350552?text=Olá,%20quero%20conhecer%20a%20plataforma%20BrokerOn%20para%20minha%20corretora.";
+
+const links = [
+  { label: "Plataforma", href: "/#plataforma" },
+  { label: "Recursos", href: "/recursos" },
+  { label: "Integrações", href: "/#integracoes" },
+  { label: "Segurança", href: "/#seguranca" },
+  { label: "FAQ", href: "/#faq" },
+];
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
-
-  const services = [
-    {
-      name: "Gestão de Credenciais Quiver",
-      desc: "Verificação automática e normalização de status.",
-      href: "/servicos/gestao-credenciais",
-      icon: Bot,
-    },
-    {
-      name: "Cofre de Senhas Pro",
-      desc: "Segurança de nível militar com criptografia AES.",
-      href: "/servicos/cofre-pro",
-      icon: Shield,
-    },
-    {
-      name: "Relatórios de Vendas",
-      desc: "Análise de planilhas e relatórios automatizados.",
-      href: "/servicos/relatorios-vendas",
-      icon: FileSpreadsheet,
-    },
-    {
-      name: "Conciliação & Comissões",
-      desc: "Auditoria de recebimentos e baixas no Quiver.",
-      href: "/servicos/conciliacao-comissoes",
-      icon: Percent,
-    },
-    {
-      name: "Sinistros & Clientes",
-      desc: "Automação de operações no dia a dia da corretora.",
-      href: "/servicos/gestao-sinistros-clientes",
-      icon: Activity,
-    },
-    {
-      name: "Captação de Leads",
-      desc: "Páginas de cotação públicas e capture oportunidades.",
-      href: "/servicos/captacao-leads",
-      icon: QrCode,
-    },
-  ];
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white font-display">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-emerald-500 text-white shadow-lg shadow-violet-500/25">
-            B
-          </span>
-          <span>
-            Broker<span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-emerald-400">On</span>
-          </span>
+    <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-[#050609]/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-3" aria-label="BrokerOn — início">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-emerald-400 font-display text-sm font-black text-white shadow-lg shadow-violet-500/20">B</span>
+          <span className="font-display text-xl font-bold tracking-tight text-white">Broker<span className="text-emerald-300">On</span></span>
+          <span className="hidden border-l border-white/10 pl-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600 sm:block">by Omnitheus</span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
-          <Link href="/" className="text-sm font-medium text-zinc-300 transition-colors hover:text-white">
-            Home
-          </Link>
-          
-          {/* Services Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setIsServicesOpen(!isServicesOpen)}
-              onMouseEnter={() => setIsServicesOpen(true)}
-              className="flex items-center gap-1 text-sm font-medium text-zinc-300 transition-colors hover:text-white focus:outline-none"
-            >
-              Serviços
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isServicesOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {isServicesOpen && (
-              <div
-                onMouseLeave={() => setIsServicesOpen(false)}
-                className="absolute left-1/2 top-full z-50 mt-3 w-80 -translate-x-1/2 rounded-2xl border border-zinc-800 bg-zinc-900 p-2 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200"
-              >
-                {services.map((service) => (
-                  <Link
-                    key={service.name}
-                    href={service.href}
-                    onClick={() => setIsServicesOpen(false)}
-                    className="flex items-start gap-3 rounded-xl p-3 hover:bg-zinc-800/60 transition-colors"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-violet-400">
-                      <service.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-white">{service.name}</div>
-                      <p className="text-xs text-zinc-400 leading-relaxed">{service.desc}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Link href="/#seguranca" className="text-sm font-medium text-zinc-300 transition-colors hover:text-white">
-            Segurança
-          </Link>
-          <Link href="/#faq" className="text-sm font-medium text-zinc-300 transition-colors hover:text-white">
-            FAQ
-          </Link>
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Navegação principal">
+          {links.map((link) => <Link key={link.href} href={link.href} className="text-sm font-medium text-zinc-400 transition hover:text-white">{link.label}</Link>)}
         </nav>
 
-        {/* CTA Button */}
-        <div className="hidden md:flex items-center gap-4">
-          <Link
-            href="https://wa.me/5511978350552?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20BrokerOn!"
-            target="_blank"
-            className="relative inline-flex items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none"
-          >
-            Falar com Especialista
-          </Link>
+        <div className="hidden items-center gap-4 lg:flex">
+          <Link href="https://bot.omnitheus.com.br" target="_blank" className="text-sm font-semibold text-zinc-300 transition hover:text-white">Entrar</Link>
+          <Link href={whatsapp} target="_blank" className="inline-flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-emerald-200">Agendar demonstração <ArrowUpRight className="ml-1.5 h-4 w-4" /></Link>
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white md:hidden"
-        >
-          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        <button type="button" onClick={() => setOpen(!open)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-zinc-300 lg:hidden" aria-label={open ? "Fechar menu" : "Abrir menu"} aria-expanded={open}>
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* Mobile Drawer */}
-      {isOpen && (
-        <div className="border-t border-zinc-800 bg-zinc-950 px-6 py-4 md:hidden animate-in fade-in slide-in-from-top-5 duration-200">
-          <nav className="flex flex-col gap-4">
-            <Link
-              href="/"
-              onClick={() => setIsOpen(false)}
-              className="text-base font-medium text-zinc-300 hover:text-white"
-            >
-              Home
-            </Link>
-            
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Serviços</span>
-              <div className="grid gap-3 pl-2 border-l border-zinc-800">
-                {services.map((service) => (
-                  <Link
-                    key={service.name}
-                    href={service.href}
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 py-1.5 text-sm font-medium text-zinc-400 hover:text-white"
-                  >
-                    <service.icon className="h-4 w-4 text-violet-400" />
-                    {service.name}
-                  </Link>
-                ))}
-              </div>
+      {open && (
+        <div className="border-t border-white/[0.07] bg-[#050609] px-6 py-6 lg:hidden">
+          <nav className="flex flex-col gap-1">
+            {links.map((link) => <Link key={link.href} href={link.href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-sm font-medium text-zinc-300 hover:bg-white/[0.04]">{link.label}</Link>)}
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-5">
+              <Link href="https://bot.omnitheus.com.br" target="_blank" className="rounded-full border border-white/10 px-4 py-3 text-center text-sm font-semibold text-white">Entrar</Link>
+              <Link href={whatsapp} target="_blank" className="rounded-full bg-white px-4 py-3 text-center text-sm font-bold text-zinc-950">Ver demonstração</Link>
             </div>
-
-            <Link
-              href="/#seguranca"
-              onClick={() => setIsOpen(false)}
-              className="text-base font-medium text-zinc-300 hover:text-white"
-            >
-              Segurança
-            </Link>
-            <Link
-              href="/#faq"
-              onClick={() => setIsOpen(false)}
-              className="text-base font-medium text-zinc-300 hover:text-white"
-            >
-              FAQ
-            </Link>
-
-            <Link
-              href="https://wa.me/5511978350552?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20BrokerOn!"
-              target="_blank"
-              onClick={() => setIsOpen(false)}
-              className="mt-4 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-emerald-500 py-3 text-sm font-semibold text-white shadow-lg"
-            >
-              Falar com Especialista
-            </Link>
           </nav>
         </div>
       )}

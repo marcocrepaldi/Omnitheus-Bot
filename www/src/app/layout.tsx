@@ -25,11 +25,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "BrokerOn | Automação e RPA para Corretoras de Seguros com Quiver",
+    default: "BrokerOn | Plataforma Operacional para Corretoras de Seguros",
     template: "%s | BrokerOn"
   },
-  description: "Simplifique sua gestão no Quiver. O BrokerOn, do Grupo Omnitheus, automatiza a verificação de credenciais expiradas, garante sincronização rápida com o Cofre de Senhas Pro criptografado em AES e concilia comissões sem trabalho manual.",
-  keywords: ["BrokerOn", "Grupo Omnitheus", "Quiver automação", "Quiver robô", "corretora de seguros automação", "sincronizar senha quiver", "cofre senhas corretora", "RPA seguros", "conciliação comissões quiver"],
+  description: "Centralize vendas, carteira, renovações, comissões, sinistros e inteligência operacional em uma plataforma criada para corretoras de seguros.",
+  keywords: ["BrokerOn", "Grupo Omnitheus", "sistema para corretora de seguros", "gestão de corretora", "CRM para corretora de seguros", "automação para corretoras", "gestão de apólices", "gestão de comissões", "renovação de seguros", "analytics seguros", "integração Quiver"],
   authors: [{ name: "Grupo Omnitheus" }],
   creator: "Grupo Omnitheus",
   publisher: "Grupo Omnitheus",
@@ -41,23 +41,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     url: "https://brokeron.com.br",
-    title: "BrokerOn | Automação para Corretoras de Seguros",
-    description: "Simplifique a gestão da sua corretora no Quiver com o BrokerOn. Automação de credenciais, cofre de senhas e conciliação de comissões.",
+    title: "BrokerOn | A operação da sua corretora, conectada",
+    description: "Vendas, carteira, renovações, comissões e inteligência operacional em uma plataforma feita para corretoras de seguros.",
     siteName: "BrokerOn",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "BrokerOn - Automação Inteligente de Corretoras",
-      },
-    ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "BrokerOn | Automação Quiver",
-    description: "Robôs inteligentes para atualizar credenciais e baixar comissões no Quiver.",
-    images: ["/og-image.png"],
+    card: "summary",
+    title: "BrokerOn | Plataforma para Corretoras de Seguros",
+    description: "Conecte vendas, carteira, renovações, comissões e inteligência operacional.",
   },
   robots: {
     index: true,

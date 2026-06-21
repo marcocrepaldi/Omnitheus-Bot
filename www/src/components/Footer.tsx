@@ -1,111 +1,51 @@
 import Link from "next/link";
-import { Mail, Phone, MapPin, Bot, Shield, FileSpreadsheet, Percent, Activity, QrCode } from "lucide-react";
+import { Mail, MapPin, MessageCircle } from "lucide-react";
+
+const whatsapp = "https://wa.me/5511978350552";
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
-  const serviceLinks = [
-    { name: "Credenciais Quiver", href: "/servicos/gestao-credenciais", icon: Bot },
-    { name: "Cofre de Senhas Pro", href: "/servicos/cofre-pro", icon: Shield },
-    { name: "Relatórios de Vendas", href: "/servicos/relatorios-vendas", icon: FileSpreadsheet },
-    { name: "Conciliação & Comissões", href: "/servicos/conciliacao-comissoes", icon: Percent },
-    { name: "Sinistros & Clientes", href: "/servicos/gestao-sinistros-clientes", icon: Activity },
-    { name: "Captação de Leads", href: "/servicos/captacao-leads", icon: QrCode },
-  ];
-
-  const infoLinks = [
-    { name: "Segurança & Criptografia", href: "/#seguranca" },
-    { name: "Perguntas Frequentes (FAQ)", href: "/#faq" },
-    { name: "Política de Privacidade", href: "/politica-privacidade" },
-  ];
-
   return (
-    <footer className="relative border-t border-zinc-800 bg-zinc-950 py-16 text-zinc-400">
-      {/* Background glow overlay */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.05),transparent_60%)] pointer-events-none" />
-
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
-          
-          {/* Brand & Pitch */}
-          <div className="flex flex-col gap-4">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight text-white font-display">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-violet-600 to-emerald-500 text-white font-semibold">
-                B
-              </span>
-              <span>
-                Broker<span className="text-violet-400">On</span>
-              </span>
+    <footer className="border-t border-white/[0.07] bg-[#050609] py-14 text-zinc-500">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.3fr_.7fr_.7fr_1fr]">
+          <div>
+            <Link href="/" className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-emerald-400 font-display text-sm font-black text-white">B</span>
+              <span className="font-display text-xl font-bold text-white">Broker<span className="text-emerald-300">On</span></span>
             </Link>
-            <p className="text-sm leading-relaxed text-zinc-400">
-              BrokerOn é um sistema do Grupo Omnitheus. Automações inteligentes e seguras de processos (RPA) para corretoras de seguros integradas ao sistema Quiver.
-            </p>
+            <p className="mt-5 max-w-sm text-sm leading-6">Plataforma operacional para corretoras de seguros. Vendas, carteira, renovações, comissões e inteligência trabalhando em conjunto.</p>
+            <p className="mt-3 text-xs">Um produto do Grupo Omnitheus.</p>
           </div>
-
-          {/* Service Pages (SEO booster) */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white font-display">Nossos Serviços</h3>
-            <ul className="flex flex-col gap-2">
-              {serviceLinks.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="flex items-center gap-2 text-sm transition-colors hover:text-white">
-                    <link.icon className="h-4 w-4 text-violet-400" />
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">Plataforma</h2>
+            <ul className="mt-5 space-y-3 text-sm">
+              <li><Link href="/#plataforma" className="hover:text-white">Visão geral</Link></li>
+              <li><Link href="/recursos" className="hover:text-white">Todos os recursos</Link></li>
+              <li><Link href="/#integracoes" className="hover:text-white">Integrações</Link></li>
+              <li><Link href="/#seguranca" className="hover:text-white">Segurança</Link></li>
             </ul>
           </div>
-
-          {/* Useful Links */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white font-display">Informações</h3>
-            <ul className="flex flex-col gap-2">
-              {infoLinks.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-sm transition-colors hover:text-white">
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">Informações</h2>
+            <ul className="mt-5 space-y-3 text-sm">
+              <li><Link href="/#faq" className="hover:text-white">Perguntas frequentes</Link></li>
+              <li><Link href="/politica-privacidade" className="hover:text-white">Privacidade</Link></li>
+              <li><Link href="/termos-de-uso" className="hover:text-white">Termos de uso</Link></li>
+              <li><Link href="https://bot.omnitheus.com.br" target="_blank" className="hover:text-white">Acessar plataforma</Link></li>
             </ul>
           </div>
-
-          {/* Contact Details */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white font-display">Contato & Localização</h3>
-            <ul className="flex flex-col gap-3">
-              <li className="flex items-start gap-3 text-sm">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                <span>R. Pais Leme, 215, Conj. 1713<br />Pinheiros, São Paulo - SP</span>
-              </li>
-              <li className="flex items-center gap-3 text-sm">
-                <Phone className="h-4 w-4 text-emerald-400" />
-                <Link
-                  href="https://wa.me/5511978350552?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20BrokerOn!"
-                  target="_blank"
-                  className="transition-colors hover:text-white"
-                >
-                  (11) 97835-0552
-                </Link>
-              </li>
-              <li className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-emerald-400" />
-                <a href="mailto:contato@omniheus.com.br" className="transition-colors hover:text-white">
-                  contato@omniheus.com.br
-                </a>
-              </li>
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">Fale com a gente</h2>
+            <ul className="mt-5 space-y-4 text-sm">
+              <li><Link href={whatsapp} target="_blank" className="flex items-center gap-3 hover:text-white"><MessageCircle className="h-4 w-4 text-emerald-300" />(11) 97835-0552</Link></li>
+              <li><a href="mailto:contato@omniheus.com.br" className="flex items-center gap-3 hover:text-white"><Mail className="h-4 w-4 text-emerald-300" />contato@omniheus.com.br</a></li>
+              <li className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /><span>R. Pais Leme, 215<br />Pinheiros, São Paulo — SP</span></li>
             </ul>
           </div>
-
         </div>
-
-        <div className="mt-16 border-t border-zinc-800/60 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
-          <p>&copy; {currentYear} BrokerOn - Grupo Omnitheus. Todos os direitos reservados. CNPJ sob consulta.</p>
-          <div className="flex gap-4">
-            <Link href="/politica-privacidade" className="hover:text-white">Políticas de Privacidade</Link>
-            <Link href="/termos-de-uso" className="hover:text-white">Termos de Uso</Link>
-          </div>
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/[0.07] pt-7 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} BrokerOn — Grupo Omnitheus.</p>
+          <p>Feito para corretoras que querem operar melhor.</p>
         </div>
       </div>
     </footer>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bot, CheckCircle, AlertCircle, RefreshCw, ArrowLeft, Mail, MessageSquare } from "lucide-react";
+import { Bot, CheckCircle, AlertCircle, ArrowLeft, Mail, MessageSquare } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Gestão de Credenciais Quiver | BrokerOn",
@@ -82,7 +82,7 @@ export default function GestaoCredenciaisPage() {
               <div className="space-y-3 text-xs">
                 <div className="flex gap-2">
                   <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                  <span className="text-zinc-300">Checkboxes no Quiver entram no estado indeterminado ("X") quando expiram.</span>
+                  <span className="text-zinc-300">Checkboxes no Quiver entram no estado indeterminado (&quot;X&quot;) quando expiram.</span>
                 </div>
                 <div className="flex gap-2">
                   <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
@@ -90,7 +90,7 @@ export default function GestaoCredenciaisPage() {
                 </div>
                 <div className="flex gap-2">
                   <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                  <span className="text-zinc-300">O Robô 3 força de "X" para "S" (Sim) ou "N" (Não), resolvendo o bug por completo.</span>
+                  <span className="text-zinc-300">O Robô 3 força de &quot;X&quot; para &quot;S&quot; (Sim) ou &quot;N&quot; (Não), resolvendo o bug por completo.</span>
                 </div>
               </div>
             </div>
@@ -98,7 +98,7 @@ export default function GestaoCredenciaisPage() {
             <div className="order-1 md:order-2">
               <h2 className="text-xl font-bold text-white font-display">A Sincronização Inteligente (Robô 3)</h2>
               <p className="text-sm text-zinc-400 mt-3 leading-relaxed">
-                Quando você altera uma senha no portal de uma seguradora, basta registrá-la no nosso Cofre de Senhas Pro e clicar em <strong>"Sincronizar Quiver"</strong>.
+                Quando você altera uma senha no portal de uma seguradora, basta registrá-la no nosso Cofre de Senhas Pro e clicar em <strong>&quot;Sincronizar Quiver&quot;</strong>.
               </p>
               <p className="text-sm text-zinc-400 mt-3 leading-relaxed">
                 O Robô 3 assume imediatamente. Ele acessa a Central de Senhas via API, busca a credencial específica da seguradora (ex: Suhai, Bradesco, Allianz), limpa chaves internas do Angular, corrige o status dos checkboxes indeterminados e executa um PUT direto. Pronto: sincronização em segundos!

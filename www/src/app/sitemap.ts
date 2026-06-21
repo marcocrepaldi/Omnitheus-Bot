@@ -1,22 +1,22 @@
 import { MetadataRoute } from "next";
+import { recursos } from "@/content/recursos";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://brokeron.com.br";
   
   const routes = [
     "",
-    "/servicos/gestao-credenciais",
-    "/servicos/cofre-pro",
-    "/servicos/relatorios-vendas",
-    "/servicos/conciliacao-comissoes",
-    "/servicos/gestao-sinistros-clientes",
-    "/servicos/captacao-leads",
+    "/recursos",
+    "/politica-privacidade",
+    "/termos-de-uso",
   ];
 
-  return routes.map((route) => ({
+  const paginasRecursos = recursos.map((recurso) => `/recursos/${recurso.slug}`);
+
+  return [...routes, ...paginasRecursos].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: "weekly",
-    priority: route === "" ? 1.0 : 0.8,
+    priority: route === "" ? 1.0 : route === "/recursos" ? 0.9 : route.startsWith("/recursos/") ? 0.8 : 0.3,
   }));
 }
