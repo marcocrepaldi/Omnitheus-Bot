@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronRight, MessageCircle, Sparkles } f
 import { getRecurso, getRelacionados, recursos } from "@/content/recursos";
 
 const baseUrl = "https://brokeron.com.br";
-const whatsapp = "https://wa.me/5511978350552?text=Olá,%20quero%20conhecer%20este%20recurso%20do%20BrokerOn.";
+const whatsapp = "https://wa.me/5511985266582?text=Olá,%20quero%20conhecer%20este%20recurso%20do%20BrokerOn.";
 
 type Props = { params: Promise<{ slug: string }> };
 

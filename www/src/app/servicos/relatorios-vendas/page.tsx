@@ -115,7 +115,7 @@ export default function RelatoriosVendasPage() {
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href="https://wa.me/5511978350552?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20robô%20de%20Relatórios%20de%20Vendas!"
+                href="https://wa.me/5511985266582?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20robô%20de%20Relatórios%20de%20Vendas!"
                 target="_blank"
                 className="flex w-full sm:w-auto items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 px-8 py-3 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02]"
               >

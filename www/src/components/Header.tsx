@@ -5,7 +5,7 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const whatsapp =
-  "https://wa.me/5511978350552?text=Olá,%20quero%20conhecer%20a%20plataforma%20BrokerOn%20para%20minha%20corretora.";
+  "https://wa.me/5511985266582?text=Olá,%20quero%20conhecer%20a%20plataforma%20BrokerOn%20para%20minha%20corretora.";
 
 const links = [
   { label: "Plataforma", href: "/#plataforma" },
@@ -32,7 +32,7 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-4 lg:flex">
-          <Link href="https://bot.omnitheus.com.br" target="_blank" className="text-sm font-semibold text-zinc-300 transition hover:text-white">Entrar</Link>
+          <Link href="https://brokeron.omnitheus.com.br/" target="_blank" className="text-sm font-semibold text-zinc-300 transition hover:text-white">Entrar</Link>
           <Link href={whatsapp} target="_blank" className="inline-flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-emerald-200">Agendar demonstração <ArrowUpRight className="ml-1.5 h-4 w-4" /></Link>
         </div>
 
@@ -46,7 +46,7 @@ export default function Header() {
           <nav className="flex flex-col gap-1">
             {links.map((link) => <Link key={link.href} href={link.href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-sm font-medium text-zinc-300 hover:bg-white/[0.04]">{link.label}</Link>)}
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-5">
-              <Link href="https://bot.omnitheus.com.br" target="_blank" className="rounded-full border border-white/10 px-4 py-3 text-center text-sm font-semibold text-white">Entrar</Link>
+              <Link href="https://brokeron.omnitheus.com.br/" target="_blank" className="rounded-full border border-white/10 px-4 py-3 text-center text-sm font-semibold text-white">Entrar</Link>
               <Link href={whatsapp} target="_blank" className="rounded-full bg-white px-4 py-3 text-center text-sm font-bold text-zinc-950">Ver demonstração</Link>
             </div>
           </nav>

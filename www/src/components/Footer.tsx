@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Mail, MapPin, MessageCircle } from "lucide-react";
 
-const whatsapp = "https://wa.me/5511978350552";
+const whatsapp = "https://wa.me/5511985266582";
 
 export default function Footer() {
   return (
@@ -31,13 +31,13 @@ export default function Footer() {
               <li><Link href="/#faq" className="hover:text-white">Perguntas frequentes</Link></li>
               <li><Link href="/politica-privacidade" className="hover:text-white">Privacidade</Link></li>
               <li><Link href="/termos-de-uso" className="hover:text-white">Termos de uso</Link></li>
-              <li><Link href="https://bot.omnitheus.com.br" target="_blank" className="hover:text-white">Acessar plataforma</Link></li>
+              <li><Link href="https://brokeron.omnitheus.com.br/" target="_blank" className="hover:text-white">Acessar plataforma</Link></li>
             </ul>
           </div>
           <div>
             <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">Fale com a gente</h2>
             <ul className="mt-5 space-y-4 text-sm">
-              <li><Link href={whatsapp} target="_blank" className="flex items-center gap-3 hover:text-white"><MessageCircle className="h-4 w-4 text-emerald-300" />(11) 97835-0552</Link></li>
+              <li><Link href={whatsapp} target="_blank" className="flex items-center gap-3 hover:text-white"><MessageCircle className="h-4 w-4 text-emerald-300" />(11) 98526-6582</Link></li>
               <li><a href="mailto:contato@omniheus.com.br" className="flex items-center gap-3 hover:text-white"><Mail className="h-4 w-4 text-emerald-300" />contato@omniheus.com.br</a></li>
               <li className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /><span>R. Pais Leme, 215<br />Pinheiros, São Paulo — SP</span></li>
             </ul>

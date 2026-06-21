@@ -31,7 +31,7 @@ import {
 import { useState } from "react";
 
 const whatsapp =
-  "https://wa.me/5511978350552?text=Olá,%20quero%20conhecer%20a%20plataforma%20BrokerOn%20para%20minha%20corretora.";
+  "https://wa.me/5511985266582?text=Olá,%20quero%20conhecer%20a%20plataforma%20BrokerOn%20para%20minha%20corretora.";
 
 const pillars = [
   {
